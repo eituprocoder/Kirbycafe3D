@@ -3,1590 +3,1567 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>kirby Café</title>
-    <!-- Three.js CDN -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <title>Kirby Cafe 3D</title>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@700&display=swap');
+
+        :root {
+            --kirby-pink: #FFB7C5;
+            --ui-bg: rgba(255, 255, 255, 0.85);
+            --text-dark: #333;
+            --accent: #FF5722;
+        }
+
         * {
             box-sizing: border-box;
             user-select: none;
             -webkit-user-select: none;
+        }
+
+        body {
             margin: 0;
-            padding: 0;
-            font-family: 'Fredoka', 'Comfortaa', 'Arial Round MT Bold', sans-serif;
-        }
-
-        body, html {
-            width: 100%;
-            height: 100%;
             overflow: hidden;
-            background-color: #2b1d19;
-            color: #fff;
+            background-color: #87CEEB;
+            font-family: 'Fredoka One', cursive;
+            touch-action: none;
         }
 
-        #canvas-container {
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        canvas {
+            display: block;
             width: 100%;
             height: 100%;
+        }
+
+        /* UI Overlays */
+        .screen {
             position: absolute;
             top: 0;
             left: 0;
-            z-index: 1;
-        }
-
-        /* HUD & UI OVERLAYS */
-        .ui-layer {
-            position: absolute;
-            top: 0;
-            left: 0;
             width: 100%;
             height: 100%;
-            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(135, 206, 235, 0.7);
+            backdrop-filter: blur(5px);
+            z-index: 100;
+            transition: opacity 0.3s ease;
+        }
+
+        .hidden {
+            display: none !important;
+            opacity: 0;
             pointer-events: none;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            padding: 15px;
         }
 
-        .interactive {
-            pointer-events: auto !important;
+        h1 {
+            font-size: 4rem;
+            color: white;
+            text-shadow: 4px 4px 0 #FF69B4, -2px -2px 0 #FF69B4, 2px -2px 0 #FF69B4, -2px 2px 0 #FF69B4, 4px 6px 10px rgba(0,0,0,0.5);
+            margin-bottom: 2rem;
+            text-align: center;
         }
 
-        /* Top HUD Bar */
-        .top-hud {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+        h2 {
+            font-size: 2.5rem;
+            color: #FF5722;
+            text-shadow: 2px 2px 0 white;
+            margin-bottom: 1rem;
+        }
+
+        .btn {
+            background: var(--kirby-pink);
+            color: white;
+            font-family: 'Fredoka One', cursive;
+            font-size: 1.5rem;
+            padding: 15px 40px;
+            margin: 10px;
+            border: 4px solid white;
+            border-radius: 30px;
+            cursor: pointer;
+            box-shadow: 0 6px 0 #FF69B4, 0 10px 10px rgba(0,0,0,0.2);
+            transition: transform 0.1s, box-shadow 0.1s;
+            text-shadow: 2px 2px 0 #FF69B4;
+        }
+
+        .btn:active {
+            transform: translateY(6px);
+            box-shadow: 0 0 0 #FF69B4, 0 4px 4px rgba(0,0,0,0.2);
+        }
+
+        .btn.locked {
+            background: #ccc;
+            border-color: #999;
+            box-shadow: 0 6px 0 #888;
+            color: #666;
+            text-shadow: none;
+            cursor: not-allowed;
+        }
+
+        /* HUD */
+        #hud {
+            position: absolute;
+            top: 0;
+            left: 0;
             width: 100%;
-            max-width: 900px;
-            margin: 0 auto;
-            background: rgba(255, 240, 220, 0.9);
-            border: 4px solid #ff7b9c;
-            border-radius: 20px;
-            padding: 10px 20px;
-            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
-            color: #5c3218;
-            transition: all 0.3s ease;
-        }
-
-        .top-hud.lunch-rush {
-            background: rgba(255, 220, 100, 0.95);
-            border-color: #ff3333;
-            animation: pulse-hud 0.5s infinite alternate;
-        }
-
-        @keyframes pulse-hud {
-            0% { transform: scale(1); box-shadow: 0 8px 16px rgba(255,0,0,0.4); }
-            100% { transform: scale(1.02); box-shadow: 0 12px 24px rgba(255,0,0,0.8); }
-        }
-
-        .hud-card {
+            height: 100%;
+            pointer-events: none;
+            z-index: 50;
+            padding: 20px;
             display: flex;
             flex-direction: column;
-            align-items: center;
-            font-weight: bold;
+            justify-content: space-between;
         }
 
-        .hud-label {
-            font-size: 12px;
-            color: #8c5332;
-            text-transform: uppercase;
-            letter-spacing: 1px;
+        .hud-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
         }
 
-        .hud-value {
-            font-size: 26px;
-            color: #ff477e;
-            text-shadow: 1px 1px 0px #fff;
+        .hud-panel {
+            background: var(--ui-bg);
+            padding: 10px 20px;
+            border-radius: 20px;
+            border: 3px solid white;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            font-size: 1.5rem;
+            color: var(--text-dark);
+            text-align: center;
         }
 
-        /* Satisfaction Bar */
+        .hud-panel span {
+            display: block;
+            font-family: 'Nunito', sans-serif;
+            font-size: 1rem;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        #timer { font-size: 2.5rem; color: #4CAF50; }
+        .timer-danger { color: #F44336 !important; animation: pulse 0.5s infinite; }
+        #score-val { color: #2196F3; }
+        #combo-val { color: #FF9800; font-size: 2rem; transition: transform 0.2s;}
+        .combo-pop { transform: scale(1.5); color: #E91E63 !important; }
+
         .satisfaction-container {
             width: 100%;
-            max-width: 600px;
-            margin: 10px auto 0 auto;
-            background: rgba(0,0,0,0.4);
-            border-radius: 15px;
-            padding: 4px;
-            border: 2px solid #fff;
+            max-width: 400px;
+            margin: 0 auto;
+            background: rgba(0,0,0,0.2);
+            border-radius: 20px;
+            border: 3px solid white;
+            height: 30px;
             position: relative;
+            overflow: hidden;
         }
 
-        .satisfaction-bar {
-            height: 18px;
+        #satisfaction-bar {
+            height: 100%;
             width: 100%;
-            background: linear-gradient(90deg, #ff4d4d, #ffcc00, #4dff88);
-            border-radius: 10px;
-            transition: width 0.2s ease-out;
+            background: linear-gradient(90deg, #4CAF50, #8BC34A);
+            transition: width 0.3s ease, background-color 0.3s ease;
         }
 
-        .satisfaction-text {
+        .sat-label {
+            position: absolute;
+            width: 100%;
+            text-align: center;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 1rem;
+            color: white;
+            text-shadow: 1px 1px 2px black;
+        }
+
+        .hud-middle {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-grow: 1;
+        }
+
+        .order-display {
+            background: var(--ui-bg);
+            padding: 15px;
+            border-radius: 15px;
+            border: 3px solid white;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+
+        #current-order-icon {
+            font-size: 4rem;
+            line-height: 1;
+        }
+        
+        #next-order-icon {
+            font-size: 2rem;
+            opacity: 0.7;
+        }
+
+        .hud-bottom {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            pointer-events: auto;
+        }
+
+        .station-btn {
+            width: 60px;
+            height: 60px;
+            background: white;
+            border: 3px solid #ddd;
+            border-radius: 15px;
+            font-size: 2rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #ccc;
+        }
+        
+        .station-btn:active, .station-btn.active {
+            transform: translateY(4px);
+            box-shadow: 0 0 0 #ccc;
+            border-color: var(--accent);
+        }
+
+        #lunch-rush-alert {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            font-size: 11px;
-            font-weight: bold;
-            color: #fff;
-            text-shadow: 1px 1px 2px #000;
+            font-size: 5rem;
+            color: #FF5722;
+            text-shadow: 4px 4px 0 white, -2px -2px 0 white, 2px -2px 0 white, -2px 2px 0 white;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s;
         }
 
-        /* Side Info Panel */
-        .orders-panel {
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        /* Mobile Controls */
+        #mobile-controls {
             position: absolute;
-            right: 20px;
-            top: 110px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .order-card {
-            background: rgba(255, 255, 255, 0.92);
-            border: 3px solid #ff7b9c;
-            border-radius: 15px;
-            padding: 10px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-width: 100px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-            color: #4a2810;
-        }
-
-        .order-card.next {
-            opacity: 0.8;
-            transform: scale(0.85);
-            border-color: #aaa;
-        }
-
-        .order-icon {
-            width: 50px;
-            height: 50px;
-            margin-top: 5px;
-            background-size: contain;
-            background-repeat: no-repeat;
-            background-position: center;
-        }
-
-        /* Food Stations Buttons (Bottom Desktop / Mobile Shortcut) */
-        .stations-bar {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            margin-bottom: 10px;
-        }
-
-        .station-btn {
-            background: rgba(255, 255, 255, 0.9);
-            border: 3px solid #ff9ebb;
-            border-radius: 16px;
-            padding: 8px 14px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            cursor: pointer;
-            transition: all 0.15s ease;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
-            color: #333;
-            font-weight: bold;
-            font-size: 12px;
-        }
-
-        .station-btn:active, .station-btn.active {
-            transform: scale(0.92);
-            background: #ffe3ec;
-            border-color: #ff477e;
-        }
-
-        .station-key {
-            background: #ff477e;
-            color: white;
+            bottom: 20px;
+            left: 20px;
+            width: 150px;
+            height: 150px;
+            background: rgba(255,255,255,0.2);
             border-radius: 50%;
-            width: 22px;
-            height: 22px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-            margin-bottom: 4px;
-        }
-
-        /* MOBILE CONTROLS */
-        .mobile-controls {
+            pointer-events: auto;
             display: none;
-            width: 100%;
-            justify-content: space-between;
-            align-items: flex-end;
-            padding: 10px 20px;
         }
 
-        #joystick-zone {
-            width: 120px;
-            height: 120px;
-            background: rgba(255, 255, 255, 0.2);
-            border: 2px dashed rgba(255,255,255,0.5);
-            border-radius: 60px;
-            position: relative;
-            touch-action: none;
-        }
-
-        #joystick-knob {
-            width: 50px;
-            height: 50px;
-            background: #ff7b9c;
-            border: 3px solid #fff;
-            border-radius: 25px;
+        #joystick {
             position: absolute;
-            top: 35px;
-            left: 35px;
+            top: 50%;
+            left: 50%;
+            width: 60px;
+            height: 60px;
+            background: rgba(255,255,255,0.8);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
             box-shadow: 0 4px 8px rgba(0,0,0,0.3);
         }
 
-        .action-btn {
-            width: 75px;
-            height: 75px;
-            background: linear-gradient(135deg, #ff477e, #ff7b9c);
-            border: 4px solid #ffffff;
+        #action-btn {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 80px;
+            height: 80px;
+            background: var(--kirby-pink);
+            border: 4px solid white;
             border-radius: 50%;
             color: white;
-            font-weight: bold;
-            font-size: 16px;
-            display: flex;
-            align-items: center;
+            font-size: 2rem;
+            display: none;
             justify-content: center;
-            box-shadow: 0 6px 12px rgba(0,0,0,0.3);
-            text-shadow: 1px 1px 2px #000;
-        }
-
-        .action-btn:active {
-            transform: scale(0.9);
-            background: #e03065;
-        }
-
-        /* MENUS & MODALS */
-        .overlay-screen {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(40, 20, 15, 0.85);
-            backdrop-filter: blur(6px);
-            z-index: 100;
-            display: flex;
-            flex-direction: column;
             align-items: center;
-            justify-content: center;
-            padding: 20px;
-            text-align: center;
+            pointer-events: auto;
+            box-shadow: 0 4px 0 #FF69B4;
         }
-
-        .menu-card {
-            background: linear-gradient(180deg, #fffaf4 0%, #ffe8d6 100%);
-            border: 6px solid #ff7b9c;
-            border-radius: 30px;
-            padding: 30px 40px;
-            max-width: 500px;
-            width: 90%;
-            box-shadow: 0 15px 30px rgba(0,0,0,0.5);
-            color: #5c3218;
-            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-
-        @keyframes popIn {
-            0% { transform: scale(0.7); opacity: 0; }
-            100% { transform: scale(1); opacity: 1; }
-        }
-
-        .menu-title {
-            font-size: 36px;
-            color: #ff477e;
-            text-shadow: 2px 2px 0px #ffd1dc, 4px 4px 0px #5c3218;
-            margin-bottom: 20px;
-        }
-
-        .btn-main {
-            background: linear-gradient(180deg, #ff6b8b 0%, #ff477e 100%);
-            color: white;
-            border: 3px solid #fff;
-            border-radius: 25px;
-            padding: 12px 30px;
-            font-size: 20px;
-            font-weight: bold;
-            margin: 10px 0;
-            width: 100%;
-            cursor: pointer;
-            box-shadow: 0 6px 0px #c42353, 0 10px 15px rgba(0,0,0,0.3);
-            transition: all 0.1s ease;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.4);
-        }
-
-        .btn-main:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 0px #c42353, 0 12px 20px rgba(0,0,0,0.3);
-        }
-
-        .btn-main:active {
+        #action-btn:active {
             transform: translateY(4px);
-            box-shadow: 0 2px 0px #c42353, 0 4px 6px rgba(0,0,0,0.3);
+            box-shadow: 0 0 0 #FF69B4;
         }
 
-        .btn-secondary {
-            background: linear-gradient(180deg, #6bc5ff 0%, #3b9eff 100%);
-            box-shadow: 0 6px 0px #1e70c4, 0 10px 15px rgba(0,0,0,0.3);
+        @media (max-width: 768px) {
+            .hud-panel { padding: 5px 10px; font-size: 1.2rem; }
+            #timer { font-size: 1.8rem; }
+            h1 { font-size: 2.5rem; }
+            .btn { padding: 10px 20px; font-size: 1.2rem; }
+            #mobile-controls, #action-btn { display: flex; }
+            /* Hide PC shortcuts on mobile if needed, but stations act as touches */
         }
-
-        .btn-secondary:hover {
-            box-shadow: 0 8px 0px #1e70c4, 0 12px 20px rgba(0,0,0,0.3);
-        }
-
-        .btn-locked {
-            background: #aaa !important;
-            box-shadow: 0 6px 0px #777 !important;
-            cursor: not-allowed !important;
-            opacity: 0.7;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            margin: 20px 0;
-            text-align: left;
-            background: rgba(255,255,255,0.6);
-            padding: 15px;
-            border-radius: 15px;
-            border: 2px dashed #ff9ebb;
-        }
-
-        .stat-item {
+        
+        .bubble-3d {
+            position: absolute;
+            background: white;
+            border: 3px solid #ddd;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
             display: flex;
-            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-size: 2.5rem;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            opacity: 0;
+            transition: opacity 0.2s, top 0.1s, left 0.1s;
         }
-
-        .stat-label {
-            font-size: 12px;
-            color: #8c5332;
+        .bubble-3d::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 10px 10px 0;
+            border-style: solid;
+            border-color: white transparent transparent transparent;
         }
-
-        .stat-val {
-            font-size: 20px;
-            font-weight: bold;
-            color: #ff477e;
-        }
-
-        /* Floating Score Text Anim */
+        
         .floating-text {
             position: absolute;
-            font-weight: bold;
-            font-size: 24px;
-            color: #ffe600;
-            text-shadow: 2px 2px 0 #000;
+            font-family: 'Fredoka One', cursive;
+            font-size: 2rem;
+            color: white;
+            text-shadow: 2px 2px 0 black;
             pointer-events: none;
-            animation: floatUp 1s ease-out forwards;
-            z-index: 50;
+            animation: floatUp 1s forwards ease-out;
         }
-
+        
         @keyframes floatUp {
-            0% { opacity: 1; transform: translateY(0) scale(0.8); }
-            50% { transform: translateY(-30px) scale(1.2); }
-            100% { opacity: 0; transform: translateY(-60px) scale(1); }
+            0% { transform: translate(-50%, 0) scale(1); opacity: 1; }
+            100% { transform: translate(-50%, -50px) scale(1.5); opacity: 0; }
         }
 
-        /* Lunch Rush Banner */
-        #rush-banner {
-            position: absolute;
-            top: 30%;
-            left: 50%;
-            transform: translate(-50%, -50%) scale(0);
-            background: #ff2a55;
-            color: #ffe600;
-            padding: 15px 40px;
-            border-radius: 40px;
-            border: 6px solid #fff;
-            font-size: 42px;
-            font-weight: 900;
-            box-shadow: 0 0 30px #ff0055;
-            text-shadow: 3px 3px 0 #000;
-            pointer-events: none;
-            z-index: 60;
-            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-
-        #rush-banner.active {
-            transform: translate(-50%, -50%) scale(1);
-            animation: shake 0.3s infinite alternate;
-        }
-
-        @keyframes shake {
-            0% { transform: translate(-50%, -50%) scale(1) rotate(-2deg); }
-            100% { transform: translate(-50%, -50%) scale(1.05) rotate(2deg); }
-        }
-
-        /* Responsive Query */
-        @media (max-width: 768px) {
-            .mobile-controls { display: flex; }
-            .orders-panel { right: 10px; top: 90px; }
-            .order-card { padding: 6px; min-width: 80px; }
-            .order-icon { width: 35px; height: 35px; }
-            .hud-value { font-size: 20px; }
-            .stations-bar { gap: 6px; }
-            .station-btn { padding: 6px 8px; font-size: 10px; }
-            .station-key { display: none; }
-        }
     </style>
 </head>
 <body>
 
-    <!-- 3D Canvas -->
-    <div id="canvas-container"></div>
+    <div id="game-container">
+        <!-- 3D Canvas will be injected here -->
+        <div id="3d-bubbles-container"></div>
+    </div>
 
-    <!-- UI Overlay Layer -->
-    <div class="ui-layer">
-        <!-- Top HUD -->
-        <div style="width: 100%;">
-            <div class="top-hud" id="top-hud">
-                <div class="hud-card">
-                    <span class="hud-label">TIME</span>
-                    <span class="hud-value" id="hud-time">50</span>
-                </div>
-                <div class="hud-card">
-                    <span class="hud-label">SCORE</span>
-                    <span class="hud-value" id="hud-score">0</span>
-                </div>
-                <div class="hud-card">
-                    <span class="hud-label">COMBO</span>
-                    <span class="hud-value" id="hud-combo">x1</span>
-                </div>
-            </div>
-            <!-- Satisfaction -->
-            <div class="satisfaction-container">
-                <div class="satisfaction-bar" id="sat-bar" style="width: 100%;"></div>
-                <div class="satisfaction-text">SATISFACTION</div>
-            </div>
-        </div>
-
-        <!-- Orders Indicator Panel -->
-        <div class="orders-panel">
-            <div class="order-card">
-                <span style="font-size: 10px; font-weight: bold;">CURRENT ORDER</span>
-                <div class="order-icon" id="icon-current"></div>
-                <span id="name-current" style="font-size: 11px; font-weight: bold; margin-top:2px;">---</span>
-            </div>
-            <div class="order-card next">
-                <span style="font-size: 9px; font-weight: bold;">NEXT</span>
-                <div class="order-icon" id="icon-next"></div>
-            </div>
-        </div>
-
-        <!-- Food Station Selectors (Bottom UI) -->
-        <div style="width: 100%; display: flex; flex-direction: column; align-items: center;">
-            <div class="stations-bar interactive">
-                <div class="station-btn" onclick="game.selectFood(0)" id="btn-food-0">
-                    <span class="station-key">1</span>
-                    <span>TOMATO</span>
-                </div>
-                <div class="station-btn" onclick="game.selectFood(1)" id="btn-food-1">
-                    <span class="station-key">2</span>
-                    <span>DRINK</span>
-                </div>
-                <div class="station-btn" onclick="game.selectFood(2)" id="btn-food-2">
-                    <span class="station-key">3</span>
-                    <span>CAR CAKE</span>
-                </div>
-                <div class="station-btn" onclick="game.selectFood(3)" id="btn-food-3">
-                    <span class="station-key">4</span>
-                    <span>BURGER</span>
-                </div>
-            </div>
-
-            <!-- Mobile Joysticks -->
-            <div class="mobile-controls">
-                <div id="joystick-zone" class="interactive">
-                    <div id="joystick-knob"></div>
-                </div>
-                <div class="action-btn interactive" id="btn-serve">SERVE</div>
-            </div>
+    <!-- MAIN MENU -->
+    <div id="main-menu" class="screen">
+        <h1>3D CAFÉ RUSH</h1>
+        <button class="btn" onclick="ui.showDifficultySelect()">PLAY</button>
+        <button class="btn" onclick="ui.showHowToPlay()">HOW TO PLAY</button>
+        <div style="margin-top: 20px; font-family: 'Nunito'; color: white; text-shadow: 1px 1px 2px black;">
+            High Score (Frenzy): <span id="menu-high-score">0</span>
         </div>
     </div>
 
-    <!-- Lunch Rush Banner -->
-    <div id="rush-banner">LUNCH RUSH!</div>
-
-    <!-- Screens / Menus -->
-    <!-- Main Menu -->
-    <div class="overlay-screen interactive" id="screen-main">
-        <div class="menu-card">
-            <h1 class="menu-title">3D CAFÉ RUSH</h1>
-            <p style="margin-bottom: 20px; font-size: 14px; color: #8c5332;">Help Kirby serve hungry Waddle Dees before time runs out!</p>
-            <button class="btn-main" onclick="ui.showDifficulty()">PLAY</button>
-            <button class="btn-main btn-secondary" onclick="ui.showScores()">HIGH SCORES</button>
-            <button class="btn-main btn-secondary" onclick="ui.showHowTo()">HOW TO PLAY</button>
-        </div>
+    <!-- DIFFICULTY SELECT -->
+    <div id="difficulty-screen" class="screen hidden">
+        <h2>SELECT DIFFICULTY</h2>
+        <button class="btn" onclick="game.start('easy')">EASY GIG<br><span style="font-size:1rem;font-family:'Nunito'">🍅 🍹</span></button>
+        <button class="btn" id="btn-hustle" onclick="game.start('hustle')">HUSTLE GIG<br><span style="font-size:1rem;font-family:'Nunito'">🍅 🍹 🍰</span></button>
+        <button class="btn" id="btn-frenzy" onclick="game.start('frenzy')">FRENZY GIG<br><span style="font-size:1rem;font-family:'Nunito'">🍅 🍹 🍰 🍔</span></button>
+        <button class="btn" style="background:#888; border-color:#666; box-shadow:0 6px 0 #555" onclick="ui.showMainMenu()">BACK</button>
     </div>
 
-    <!-- Difficulty Select -->
-    <div class="overlay-screen interactive" id="screen-diff" style="display: none;">
-        <div class="menu-card">
-            <h2 class="menu-title">SELECT DIFFICULTY</h2>
-            <button class="btn-main" onclick="game.start('EASY')">EASY GIG<br><small style="font-size:11px;">Tomato & Drink only</small></button>
-            <button class="btn-main" id="btn-diff-hustle" onclick="game.start('HUSTLE')">HUSTLE GIG<br><small style="font-size:11px;">Adds Car-Cake</small></button>
-            <button class="btn-main" id="btn-diff-frenzy" onclick="game.start('FRENZY')">FRENZY GIG<br><small style="font-size:11px;">Adds Burger & High Speed</small></button>
-            <button class="btn-main btn-secondary" onclick="ui.showMain()" style="margin-top:15px;">BACK</button>
+    <!-- HOW TO PLAY -->
+    <div id="how-to-screen" class="screen hidden" style="background: rgba(0,0,0,0.8);">
+        <h2 style="color:white">HOW TO PLAY</h2>
+        <div style="color:white; font-family: 'Nunito'; font-size: 1.2rem; max-width: 600px; text-align: center; margin-bottom: 20px;">
+            <p>1. Mira el pedido del cliente en la burbuja.</p>
+            <p>2. Selecciona la comida correcta usando 1-4, tocando los iconos, o acercándote a las estaciones y pulsando E.</p>
+            <p>3. Acércate al mostrador (centro) y pulsa E (o Acción) para entregar.</p>
+            <p>4. ¡Mantén la satisfacción alta y haz combos! Cuidado con el <b>LUNCH RUSH</b> final.</p>
+            <p>Controles PC: WASD mover, E interactuar, Mouse cámara. Móvil: Joystick y botones.</p>
         </div>
+        <button class="btn" onclick="ui.showMainMenu()">GOT IT!</button>
     </div>
 
-    <!-- How To Play -->
-    <div class="overlay-screen interactive" id="screen-howto" style="display: none;">
-        <div class="menu-card">
-            <h2 class="menu-title">HOW TO PLAY</h2>
-            <div style="text-align: left; font-size: 13px; line-height: 1.6; margin-bottom: 20px;">
-                <p><b>1. Watch Orders:</b> Check what the Waddle Dee customer wants.</p>
-                <p><b>2. Pickup Food:</b> Walk to the food station or press keys [1-4] / tap icons.</p>
-                <p><b>3. Serve Order:</b> Walk up to the customer and press [E], Space or tap SERVE.</p>
-                <p><b>4. Combos & Time:</b> Serve quickly for combos! Final 20s starts LUNCH RUSH!</p>
+    <!-- HUD (Heads Up Display) -->
+    <div id="hud" class="hidden">
+        <div class="hud-top">
+            <div class="hud-panel">
+                <span>TIME</span>
+                <div id="timer">50</div>
             </div>
-            <button class="btn-main" onclick="ui.showMain()">GOT IT!</button>
-        </div>
-    </div>
-
-    <!-- High Scores -->
-    <div class="overlay-screen interactive" id="screen-scores" style="display: none;">
-        <div class="menu-card">
-            <h2 class="menu-title">HIGH SCORES</h2>
-            <div class="stats-grid" style="grid-template-columns: 1fr;">
-                <div class="stat-item"><span class="stat-label">EASY GIG</span><span class="stat-val" id="score-easy">0</span></div>
-                <div class="stat-item"><span class="stat-label">HUSTLE GIG</span><span class="stat-val" id="score-hustle">0</span></div>
-                <div class="stat-item"><span class="stat-label">FRENZY GIG</span><span class="stat-val" id="score-frenzy">0</span></div>
-            </div>
-            <button class="btn-main" onclick="ui.showMain()">BACK</button>
-        </div>
-    </div>
-
-    <!-- Results Screen -->
-    <div class="overlay-screen interactive" id="screen-results" style="display: none;">
-        <div class="menu-card">
-            <h2 class="menu-title" id="results-title">SHIFT COMPLETE!</h2>
-            <p id="new-highscore-tag" style="color: #ff0055; font-weight: bold; display: none;">★ NEW HIGH SCORE! ★</p>
-            <div class="stats-grid">
-                <div class="stat-item">
-                    <span class="stat-label">SERVED</span>
-                    <span class="stat-val" id="res-served">0</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">MAX COMBO</span>
-                    <span class="stat-val" id="res-combo">x0</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">WRONG</span>
-                    <span class="stat-val" id="res-wrong">0</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">SATISFACTION</span>
-                    <span class="stat-val" id="res-sat">100%</span>
+            <div style="flex-grow:1; margin: 0 20px;">
+                <div class="satisfaction-container">
+                    <div id="satisfaction-bar"></div>
+                    <div class="sat-label">SATISFACTION</div>
                 </div>
             </div>
-            <div style="font-size: 14px; font-weight: bold; margin-bottom: 5px;">FINAL SCORE</div>
-            <div style="font-size: 38px; font-weight: bold; color: #ff477e; margin-bottom: 20px;" id="res-score">0</div>
+            <div class="hud-panel">
+                <span>SCORE</span>
+                <div id="score-val">0</div>
+            </div>
+        </div>
 
-            <button class="btn-main" onclick="game.restart()">PLAY AGAIN</button>
-            <button class="btn-main btn-secondary" onclick="ui.showDifficulty()">CHANGE DIFFICULTY</button>
-            <button class="btn-main btn-secondary" onclick="ui.showMain()">MAIN MENU</button>
+        <div class="hud-middle">
+            <div class="hud-panel" style="background: transparent; border: none; box-shadow: none;">
+                 <div id="combo-container" style="display:none;">
+                    <span style="color:white; text-shadow: 2px 2px 0 black; font-size:1.5rem; font-family:'Fredoka One'">COMBO</span>
+                    <div id="combo-val" style="color:white; text-shadow: 2px 2px 0 #E91E63;">x1</div>
+                 </div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap: 10px;">
+                <div class="order-display">
+                    <span>NEXT ORDER</span>
+                    <div id="next-order-icon">?</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="hud-bottom" id="food-stations-ui">
+            <!-- Populated by JS -->
+        </div>
+        
+        <div id="lunch-rush-alert">LUNCH RUSH!</div>
+    </div>
+
+    <!-- Mobile Controls Overlays -->
+    <div id="mobile-controls">
+        <div id="joystick"></div>
+    </div>
+    <div id="action-btn">E</div>
+
+    <!-- RESULTS SCREEN -->
+    <div id="results-screen" class="screen hidden">
+        <h1 id="result-title">SHIFT COMPLETE!</h1>
+        <div style="background: var(--ui-bg); padding: 30px; border-radius: 20px; border: 4px solid white; box-shadow: 0 10px 20px rgba(0,0,0,0.3); text-align: left; font-size: 1.5rem; color: var(--text-dark); font-family: 'Nunito'; margin-bottom: 20px;">
+            <p>CUSTOMERS SERVED: <b id="res-customers" style="color:#2196F3">0</b></p>
+            <p>MAX COMBO: <b id="res-combo" style="color:#FF9800">0</b></p>
+            <p>WRONG ORDERS: <b id="res-wrong" style="color:#F44336">0</b></p>
+            <p>SATISFACTION: <b id="res-sat" style="color:#4CAF50">0%</b></p>
+            <hr style="border: 2px solid #ddd; margin: 15px 0;">
+            <h2 style="margin:0; text-align:center;">FINAL SCORE: <span id="res-score" style="color:#E91E63">0</span></h2>
+            <div id="new-record-msg" style="color:#FFC107; text-align:center; font-family:'Fredoka One'; font-size:1.5rem; margin-top:10px; display:none; text-shadow: 1px 1px 0 black;">NEW HIGH SCORE!</div>
+        </div>
+        <div style="display:flex;">
+            <button class="btn" onclick="game.start(game.currentDifficulty)">PLAY AGAIN</button>
+            <button class="btn" onclick="ui.showDifficultySelect()">MENU</button>
         </div>
     </div>
 
-    <!-- AUDIO SYSTEM (Synthesized Web Audio API + MP3 Audio Fallback) -->
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
-        class SoundSystem {
-            constructor() {
-                this.ctx = null;
-                this.bgmFirst = new Audio('Kirby cafe - First order.mp3');
-                this.bgmFinal = new Audio('Kirby cafe - Final order.mp3');
-                this.bgmFirst.loop = true;
-                this.bgmFinal.loop = true;
-                this.hasUserInteracted = false;
-            }
+        // --- CONSTANTS & CONFIG ---
+        const FOOD_TYPES = {
+            TOMATO: { id: 0, icon: '🍅', color: 0xFF0000, name: 'Special Tomato' },
+            DRINK: { id: 1, icon: '🍹', color: 0x00FF00, name: 'Energy Drink' },
+            CAKE: { id: 2, icon: '🍰', color: 0xFFFF00, name: 'Car Cake' },
+            BURGER: { id: 3, icon: '🍔', color: 0x8B4513, name: 'Theme Burger' }
+        };
 
-            init() {
-                if (this.ctx) return;
-                this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-            }
+        const DIFFICULTIES = {
+            easy: { items: [0, 1], spawnRate: 3000, satDecay: 0.5, unlockReq: 0 },
+            hustle: { items: [0, 1, 2], spawnRate: 2000, satDecay: 0.8, unlockReq: 1000 },
+            frenzy: { items: [0, 1, 2, 3], spawnRate: 1500, satDecay: 1.2, unlockReq: 2500 }
+        };
 
-            playBGM(type) {
-                this.stopBGM();
-                if (type === 'normal') {
-                    this.bgmFirst.currentTime = 0;
-                    this.bgmFirst.play().catch(e => console.log("Audio file playback blocked/missing: synth backup used"));
-                } else if (type === 'rush') {
-                    this.bgmFinal.currentTime = 0;
-                    this.bgmFinal.play().catch(e => console.log("Audio file playback blocked/missing: synth backup used"));
-                }
-            }
-
-            stopBGM() {
-                this.bgmFirst.pause();
-                this.bgmFinal.pause();
-            }
-
-            playSynthSound(type) {
-                if (!this.ctx) this.init();
-                if (!this.ctx) return;
-
-                const now = this.ctx.currentTime;
+        // --- AUDIO SYSTEM (Web Audio API & Audio Elements) ---
+        const audio = {
+            ctx: new (window.AudioContext || window.webkitAudioContext)(),
+            bgmIntro: new Audio('Kirby cafe - First order.mp3'),
+            bgmRush: new Audio('Kirby cafe - Final order.mp3'),
+            
+            init: function() {
+                this.bgmIntro.loop = true;
+                this.bgmIntro.volume = 0.4;
+                this.bgmRush.loop = true;
+                this.bgmRush.volume = 0.5;
+                
+                // Unlock audio context on first interaction
+                document.body.addEventListener('click', () => {
+                    if (this.ctx.state === 'suspended') this.ctx.resume();
+                }, { once: true });
+            },
+            
+            playTone: function(freq, type, duration, vol=0.1) {
+                if(this.ctx.state === 'suspended') return;
                 const osc = this.ctx.createOscillator();
                 const gain = this.ctx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + duration);
                 osc.connect(gain);
                 gain.connect(this.ctx.destination);
-
-                switch(type) {
-                    case 'select':
-                        osc.type = 'sine';
-                        osc.frequency.setValueAtTime(400, now);
-                        osc.frequency.exponentialRampToValueAtTime(800, now + 0.1);
-                        gain.gain.setValueAtTime(0.2, now);
-                        gain.gain.linearRampToValueAtTime(0, now + 0.1);
-                        osc.start(now);
-                        osc.stop(now + 0.1);
-                        break;
-                    case 'pickup':
-                        osc.type = 'triangle';
-                        osc.frequency.setValueAtTime(523.25, now); // C5
-                        osc.frequency.setValueAtTime(659.25, now + 0.08); // E5
-                        gain.gain.setValueAtTime(0.3, now);
-                        gain.gain.linearRampToValueAtTime(0, now + 0.2);
-                        osc.start(now);
-                        osc.stop(now + 0.2);
-                        break;
-                    case 'correct':
-                        osc.type = 'sine';
-                        osc.frequency.setValueAtTime(523.25, now); // C5
-                        osc.frequency.setValueAtTime(659.25, now + 0.08); // E5
-                        osc.frequency.setValueAtTime(783.99, now + 0.16); // G5
-                        osc.frequency.setValueAtTime(1046.50, now + 0.24); // C6
-                        gain.gain.setValueAtTime(0.3, now);
-                        gain.gain.linearRampToValueAtTime(0, now + 0.4);
-                        osc.start(now);
-                        osc.stop(now + 0.4);
-                        break;
-                    case 'wrong':
-                        osc.type = 'sawtooth';
-                        osc.frequency.setValueAtTime(300, now);
-                        osc.frequency.linearRampToValueAtTime(120, now + 0.3);
-                        gain.gain.setValueAtTime(0.3, now);
-                        gain.gain.linearRampToValueAtTime(0, now + 0.3);
-                        osc.start(now);
-                        osc.stop(now + 0.3);
-                        break;
-                    case 'rush':
-                        osc.type = 'square';
-                        osc.frequency.setValueAtTime(440, now);
-                        osc.frequency.setValueAtTime(880, now + 0.1);
-                        gain.gain.setValueAtTime(0.2, now);
-                        gain.gain.linearRampToValueAtTime(0, now + 0.3);
-                        osc.start(now);
-                        osc.stop(now + 0.3);
-                        break;
-                    case 'win':
-                        osc.type = 'triangle';
-                        osc.frequency.setValueAtTime(440, now);
-                        osc.frequency.setValueAtTime(554, now + 0.15);
-                        osc.frequency.setValueAtTime(659, now + 0.3);
-                        osc.frequency.setValueAtTime(880, now + 0.45);
-                        gain.gain.setValueAtTime(0.3, now);
-                        gain.gain.linearRampToValueAtTime(0, now + 0.7);
-                        osc.start(now);
-                        osc.stop(now + 0.7);
-                        break;
-                }
-            }
-        }
-
-        const audio = new SoundSystem();
-    </script>
-
-    <!-- 3D & GAME ENGINE SCRIPT -->
-    <script>
-        // Food Types & Metadata
-        const FOOD_TYPES = [
-            { id: 0, name: 'MAX TOMATO', color: '#ff2a2a' },
-            { id: 1, name: 'ENERGY DRINK', color: '#2a9d8f' },
-            { id: 2, name: 'CAR-CAKE', color: '#ff7b9c' },
-            { id: 3, name: 'BURGER', color: '#e76f51' }
-        ];
-
-        // Global Storage Data
-        const Storage = {
-            getUnlocks() {
-                return JSON.parse(localStorage.getItem('kirby_cafe_unlocks') || '{"HUSTLE":false, "FRENZY":false}');
+                osc.start();
+                osc.stop(this.ctx.currentTime + duration);
             },
-            saveUnlock(key) {
-                const unlocks = this.getUnlocks();
-                unlocks[key] = true;
-                localStorage.setItem('kirby_cafe_unlocks', JSON.stringify(unlocks));
+            
+            sfx: {
+                select: () => audio.playTone(600, 'sine', 0.1),
+                pickup: () => { audio.playTone(800, 'square', 0.1); setTimeout(()=>audio.playTone(1000, 'square', 0.1), 100); },
+                correct: () => { audio.playTone(500, 'sine', 0.1); setTimeout(()=>audio.playTone(750, 'sine', 0.2), 100); },
+                wrong: () => { audio.playTone(200, 'sawtooth', 0.3); setTimeout(()=>audio.playTone(150, 'sawtooth', 0.4), 150); },
+                combo: (level) => audio.playTone(400 + (level*50), 'sine', 0.3, 0.2),
+                spawn: () => audio.playTone(400, 'triangle', 0.2),
+                rush: () => { audio.playTone(800, 'square', 0.5, 0.3); setTimeout(()=>audio.playTone(1200, 'square', 0.5, 0.3), 200); },
+                win: () => { [523, 659, 783, 1046].forEach((f,i) => setTimeout(()=>audio.playTone(f,'sine',0.4), i*150)); },
+                lose: () => { [400, 350, 300, 250].forEach((f,i) => setTimeout(()=>audio.playTone(f,'sawtooth',0.5), i*200)); }
             },
-            getScores() {
-                return JSON.parse(localStorage.getItem('kirby_cafe_scores') || '{"EASY":0, "HUSTLE":0, "FRENZY":0}');
+            
+            playBGM: function(type) {
+                this.bgmIntro.pause();
+                this.bgmRush.pause();
+                if(type === 'intro') { this.bgmIntro.currentTime = 0; this.bgmIntro.play().catch(e=>console.log("Audio play prevented")); }
+                else if(type === 'rush') { this.bgmRush.currentTime = 0; this.bgmRush.play().catch(e=>console.log("Audio play prevented")); }
             },
-            saveScore(diff, score) {
-                const scores = this.getScores();
-                if (score > (scores[diff] || 0)) {
-                    scores[diff] = score;
-                    localStorage.setItem('kirby_cafe_scores', JSON.stringify(scores));
-                    return true; // new highscore
-                }
-                return false;
+            stopBGM: function() {
+                this.bgmIntro.pause();
+                this.bgmRush.pause();
             }
         };
 
-        // UI Controller
-        const ui = {
-            showMain() {
-                this.hideAll();
-                document.getElementById('screen-main').style.display = 'flex';
-            },
-            showDifficulty() {
-                this.hideAll();
-                document.getElementById('screen-diff').style.display = 'flex';
-                const unlocks = Storage.getUnlocks();
+        // --- STORAGE ---
+        const storage = {
+            getHighScore: (diff) => parseInt(localStorage.getItem(`kirbyCafe_score_${diff}`)) || 0,
+            setHighScore: (diff, score) => localStorage.setItem(`kirbyCafe_score_${diff}`, score),
+            checkUnlocks: () => {
+                const maxScore = Math.max(storage.getHighScore('easy'), storage.getHighScore('hustle'), storage.getHighScore('frenzy'));
                 
-                const btnHustle = document.getElementById('btn-diff-hustle');
-                const btnFrenzy = document.getElementById('btn-diff-frenzy');
-
-                if (unlocks.HUSTLE) {
-                    btnHustle.classList.remove('btn-locked');
-                    btnHustle.disabled = false;
+                const btnHustle = document.getElementById('btn-hustle');
+                if(maxScore >= DIFFICULTIES.hustle.unlockReq) {
+                    btnHustle.classList.remove('locked');
+                    btnHustle.innerHTML = `HUSTLE GIG<br><span style="font-size:1rem;font-family:'Nunito'">🍅 🍹 🍰</span>`;
                 } else {
-                    btnHustle.classList.add('btn-locked');
+                    btnHustle.classList.add('locked');
+                    btnHustle.innerHTML = `LOCKED<br><span style="font-size:0.8rem;font-family:'Nunito'">Req: ${DIFFICULTIES.hustle.unlockReq} pts</span>`;
                 }
 
-                if (unlocks.FRENZY) {
-                    btnFrenzy.classList.remove('btn-locked');
-                    btnFrenzy.disabled = false;
+                const btnFrenzy = document.getElementById('btn-frenzy');
+                if(maxScore >= DIFFICULTIES.frenzy.unlockReq) {
+                    btnFrenzy.classList.remove('locked');
+                    btnFrenzy.innerHTML = `FRENZY GIG<br><span style="font-size:1rem;font-family:'Nunito'">🍅 🍹 🍰 🍔</span>`;
                 } else {
-                    btnFrenzy.classList.add('btn-locked');
+                    btnFrenzy.classList.add('locked');
+                    btnFrenzy.innerHTML = `LOCKED<br><span style="font-size:0.8rem;font-family:'Nunito'">Req: ${DIFFICULTIES.frenzy.unlockReq} pts</span>`;
                 }
-            },
-            showHowTo() {
-                this.hideAll();
-                document.getElementById('screen-howto').style.display = 'flex';
-            },
-            showScores() {
-                this.hideAll();
-                const scores = Storage.getScores();
-                document.getElementById('score-easy').innerText = scores.EASY || 0;
-                document.getElementById('score-hustle').innerText = scores.HUSTLE || 0;
-                document.getElementById('score-frenzy').innerText = scores.FRENZY || 0;
-                document.getElementById('screen-scores').style.display = 'flex';
-            },
-            showResults(stats, isNewHigh) {
-                this.hideAll();
-                document.getElementById('res-served').innerText = stats.served;
-                document.getElementById('res-combo').innerText = 'x' + stats.maxCombo;
-                document.getElementById('res-wrong').innerText = stats.wrong;
-                document.getElementById('res-sat').innerText = Math.max(0, Math.round(stats.satisfaction)) + '%';
-                document.getElementById('res-score').innerText = stats.score;
-                document.getElementById('new-highscore-tag').style.display = isNewHigh ? 'block' : 'none';
-                document.getElementById('results-title').innerText = stats.failed ? 'SHIFT FAILED!' : 'SHIFT COMPLETE!';
-                document.getElementById('screen-results').style.display = 'flex';
-            },
-            hideAll() {
-                document.querySelectorAll('.overlay-screen').forEach(s => s.style.display = 'none');
-            },
-            updateOrderIcons(currentFoodId, nextFoodId, isHidden) {
-                const elCurrentIcon = document.getElementById('icon-current');
-                const elCurrentName = document.getElementById('name-current');
-                const elNextIcon = document.getElementById('icon-next');
-
-                if (currentFoodId !== null && currentFoodId !== undefined) {
-                    if (isHidden) {
-                        elCurrentIcon.style.background = 'none';
-                        elCurrentIcon.innerText = '?';
-                        elCurrentIcon.style.fontSize = '30px';
-                        elCurrentIcon.style.textAlign = 'center';
-                        elCurrentName.innerText = 'HIDDEN ORDER';
-                    } else {
-                        elCurrentIcon.innerText = '';
-                        elCurrentIcon.style.backgroundColor = FOOD_TYPES[currentFoodId].color;
-                        elCurrentIcon.style.borderRadius = '50%';
-                        elCurrentName.innerText = FOOD_TYPES[currentFoodId].name;
-                    }
-                } else {
-                    elCurrentIcon.style.background = 'none';
-                    elCurrentIcon.innerText = '';
-                    elCurrentName.innerText = 'WAITING...';
-                }
-
-                if (nextFoodId !== null && nextFoodId !== undefined) {
-                    elNextIcon.style.backgroundColor = FOOD_TYPES[nextFoodId].color;
-                    elNextIcon.style.borderRadius = '50%';
-                } else {
-                    elNextIcon.style.background = 'none';
-                }
-            },
-            spawnFloatingText(text, x, y) {
-                const el = document.createElement('div');
-                el.className = 'floating-text';
-                el.innerText = text;
-                el.style.left = x + 'px';
-                el.style.top = y + 'px';
-                document.body.appendChild(el);
-                setTimeout(() => el.remove(), 1000);
+                
+                document.getElementById('menu-high-score').innerText = storage.getHighScore('frenzy');
             }
         };
 
-        // THREE.JS SCENE BUILDER
-        class CafeScene {
-            constructor() {
-                this.container = document.getElementById('canvas-container');
+        // --- 3D ENGINE (THREE.JS) ---
+        const engine = {
+            scene: null, camera: null, renderer: null,
+            objects: {}, mixers: [], clock: new THREE.Clock(),
+            raycaster: new THREE.Raycaster(), mouse: new THREE.Vector2(),
+            
+            init: function() {
+                const container = document.getElementById('game-container');
                 this.scene = new THREE.Scene();
-                this.scene.background = new THREE.Color('#ffe8d6');
+                this.scene.background = new THREE.Color(0x87CEEB); // Sky
+                this.scene.fog = new THREE.Fog(0x87CEEB, 20, 50);
 
-                this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-                this.camera.position.set(0, 10, 14);
-                this.camera.lookAt(0, 1, -1);
+                this.camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+                // Isometric-ish angle looking at counter
+                this.camera.position.set(0, 10, 15);
+                this.camera.lookAt(0, 0, 0);
 
                 this.renderer = new THREE.WebGLRenderer({ antialias: true });
                 this.renderer.setSize(window.innerWidth, window.innerHeight);
                 this.renderer.shadowMap.enabled = true;
                 this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-                this.container.appendChild(this.renderer.domElement);
+                container.appendChild(this.renderer.domElement);
 
-                this.food3DModels = [];
-                this.stationLights = [];
-
-                this.setupLighting();
-                this.buildEnvironment();
-                this.buildKirby();
-                this.buildFoodStations();
-
-                window.addEventListener('resize', () => this.onWindowResize());
-            }
-
-            setupLighting() {
-                const ambientLight = new THREE.AmbientLight(0xfff0e6, 0.7);
+                // Lighting
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
                 this.scene.add(ambientLight);
 
-                const dirLight = new THREE.DirectionalLight(0xfffaed, 0.8);
-                dirLight.position.set(8, 15, 10);
+                const dirLight = new THREE.DirectionalLight(0xfff0dd, 0.8);
+                dirLight.position.set(10, 20, 10);
                 dirLight.castShadow = true;
                 dirLight.shadow.mapSize.width = 1024;
                 dirLight.shadow.mapSize.height = 1024;
-                dirLight.shadow.camera.near = 0.5;
-                dirLight.shadow.camera.far = 30;
-                dirLight.shadow.camera.left = -10;
-                dirLight.shadow.camera.right = 10;
-                dirLight.shadow.camera.top = 10;
-                dirLight.shadow.camera.bottom = -10;
+                dirLight.shadow.camera.left = -15;
+                dirLight.shadow.camera.right = 15;
+                dirLight.shadow.camera.top = 15;
+                dirLight.shadow.camera.bottom = -15;
                 this.scene.add(dirLight);
 
-                // Warm point lights
-                const pLight = new THREE.PointLight(0xffaa44, 0.5, 15);
-                pLight.position.set(0, 5, 0);
-                this.scene.add(pLight);
-            }
+                this.buildEnvironment();
+                
+                window.addEventListener('resize', () => this.onWindowResize(), false);
+                
+                // OrbitControls for debug (optional, not strictly needed for gameplay as camera is fixed)
+                // Let's implement slight mouse parallax instead for the "mouse camera" requirement
+                document.addEventListener('mousemove', (e) => {
+                    if(game.state !== 'PLAYING') return;
+                    const mouseX = (e.clientX / window.innerWidth) * 2 - 1;
+                    const mouseY = -(e.clientY / window.innerHeight) * 2 + 1;
+                    this.camera.position.x = mouseX * 2;
+                    this.camera.position.y = 10 + mouseY * 1;
+                    this.camera.lookAt(0, 0, 0);
+                });
+            },
 
-            buildEnvironment() {
+            buildEnvironment: function() {
                 // Floor
-                const floorGeo = new THREE.PlaneGeometry(24, 20);
-                const floorMat = new THREE.MeshStandardMaterial({ color: 0x8a5a36, roughness: 0.4 });
+                const floorGeo = new THREE.PlaneGeometry(50, 50);
+                const floorMat = new THREE.MeshStandardMaterial({ color: 0x8D6E63 });
                 const floor = new THREE.Mesh(floorGeo, floorMat);
                 floor.rotation.x = -Math.PI / 2;
                 floor.receiveShadow = true;
                 this.scene.add(floor);
 
-                // Back Wall
-                const wallGeo = new THREE.PlaneGeometry(24, 10);
-                const wallMat = new THREE.MeshStandardMaterial({ color: 0xffd1dc });
-                const wall = new THREE.Mesh(wallGeo, wallMat);
-                wall.position.set(0, 5, -8);
-                this.scene.add(wall);
-
-                // Main Counter / Bar
-                const counterGroup = new THREE.Group();
-                const barGeo = new THREE.BoxGeometry(10, 1.8, 1.5);
-                const barMat = new THREE.MeshStandardMaterial({ color: 0xff7b9c });
-                const bar = new THREE.Mesh(barGeo, barMat);
-                bar.position.set(0, 0.9, -2);
-                bar.castShadow = true;
-                bar.receiveShadow = true;
-                counterGroup.add(bar);
-
-                // Counter Top Plank
-                const topGeo = new THREE.BoxGeometry(10.4, 0.2, 1.8);
-                const topMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+                // Counter
+                const counterGeo = new THREE.BoxGeometry(16, 2, 3);
+                const counterMat = new THREE.MeshStandardMaterial({ color: 0xFFCC80 });
+                const counter = new THREE.Mesh(counterGeo, counterMat);
+                counter.position.set(0, 1, 0);
+                counter.castShadow = true;
+                counter.receiveShadow = true;
+                this.scene.add(counter);
+                
+                // Counter Top
+                const topGeo = new THREE.BoxGeometry(16.5, 0.2, 3.5);
+                const topMat = new THREE.MeshStandardMaterial({ color: 0xFFE0B2 });
                 const top = new THREE.Mesh(topGeo, topMat);
-                top.position.set(0, 1.8, -2);
+                top.position.set(0, 2.1, 0);
                 top.castShadow = true;
-                counterGroup.add(top);
+                top.receiveShadow = true;
+                this.scene.add(top);
 
-                this.scene.add(counterGroup);
+                // Delivery Zone Highlight
+                const delZoneGeo = new THREE.PlaneGeometry(3, 3);
+                const delZoneMat = new THREE.MeshBasicMaterial({ color: 0xffff00, transparent: true, opacity: 0.3, side: THREE.DoubleSide });
+                const delZone = new THREE.Mesh(delZoneGeo, delZoneMat);
+                delZone.rotation.x = -Math.PI/2;
+                delZone.position.set(0, 2.21, 0);
+                this.scene.add(delZone);
+                this.objects.deliveryZone = delZone;
 
-                // Decorations (Potted Plants, Banners)
-                for (let x of [-10, 10]) {
-                    const potGeo = new THREE.CylinderGeometry(0.5, 0.4, 1);
-                    const potMat = new THREE.MeshStandardMaterial({ color: 0xdddddd });
-                    const pot = new THREE.Mesh(potGeo, potMat);
-                    pot.position.set(x, 0.5, -4);
-
-                    const plantGeo = new THREE.DodecahedronGeometry(0.8);
-                    const plantMat = new THREE.MeshStandardMaterial({ color: 0x2a9d8f });
-                    const plant = new THREE.Mesh(plantGeo, plantMat);
-                    plant.position.set(x, 1.4, -4);
-
-                    this.scene.add(pot);
-                    this.scene.add(plant);
+                // Stations (behind counter)
+                const stationColors = [0xFF5252, 0x69F0AE, 0xFFD740, 0x795548];
+                for(let i=0; i<4; i++) {
+                    const sGeo = new THREE.BoxGeometry(1.5, 1.5, 1.5);
+                    const sMat = new THREE.MeshStandardMaterial({ color: stationColors[i] });
+                    const station = new THREE.Mesh(sGeo, sMat);
+                    // Distribute along X axis behind counter
+                    const px = -6 + (i * 4);
+                    station.position.set(px, 0.75, -4);
+                    station.castShadow = true;
+                    station.receiveShadow = true;
+                    this.scene.add(station);
+                    
+                    // Add visual representation of food on station
+                    const foodIcon = this.createFoodModel(i);
+                    foodIcon.position.set(px, 2, -4);
+                    foodIcon.scale.set(0.7, 0.7, 0.7);
+                    
+                    // Simple animation data
+                    foodIcon.userData = { startY: 2, offset: Math.random() * Math.PI };
+                    this.scene.add(foodIcon);
+                    
+                    if(!this.objects.stations) this.objects.stations = [];
+                    this.objects.stations.push({ mesh: station, type: i, x: px, icon: foodIcon });
                 }
-            }
-
-            buildKirby() {
-                this.kirbyGroup = new THREE.Group();
-
-                // Body
-                const bodyGeo = new THREE.SphereGeometry(0.8, 32, 32);
-                const bodyMat = new THREE.MeshStandardMaterial({ color: 0xff8da1, roughness: 0.3 });
-                this.kirbyBody = new THREE.Mesh(bodyGeo, bodyMat);
-                this.kirbyBody.position.y = 0.8;
-                this.kirbyBody.castShadow = true;
-                this.kirbyGroup.add(this.kirbyBody);
-
-                // Feet
-                const footGeo = new THREE.SphereGeometry(0.35, 16, 16);
-                footGeo.scale(1, 0.5, 1.4);
-                const footMat = new THREE.MeshStandardMaterial({ color: 0xe60039 });
-
-                this.leftFoot = new THREE.Mesh(footGeo, footMat);
-                this.leftFoot.position.set(-0.5, 0.2, 0.2);
-                this.leftFoot.castShadow = true;
-                this.kirbyGroup.add(this.leftFoot);
-
-                this.rightFoot = new THREE.Mesh(footGeo, footMat);
-                this.rightFoot.position.set(0.5, 0.2, 0.2);
-                this.rightFoot.castShadow = true;
-                this.kirbyGroup.add(this.rightFoot);
-
-                // Eyes
-                const eyeGeo = new THREE.CapsuleGeometry(0.08, 0.2, 8, 8);
-                const eyeMat = new THREE.MeshBasicMaterial({ color: 0x001133 });
                 
-                const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
-                leftEye.position.set(-0.25, 0.95, 0.72);
-                this.kirbyGroup.add(leftEye);
-
-                const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
-                rightEye.position.set(0.25, 0.95, 0.72);
-                this.kirbyGroup.add(rightEye);
-
-                // Cheeks
-                const cheekGeo = new THREE.CircleGeometry(0.12, 16);
-                const cheekMat = new THREE.MeshBasicMaterial({ color: 0xff3366 });
-                
-                const leftCheek = new THREE.Mesh(cheekGeo, cheekMat);
-                leftCheek.position.set(-0.4, 0.8, 0.72);
-                this.kirbyGroup.add(leftCheek);
-
-                const rightCheek = new THREE.Mesh(cheekGeo, cheekMat);
-                rightCheek.position.set(0.4, 0.8, 0.72);
-                this.kirbyGroup.add(rightCheek);
-
-                // Kirby Hand Dish / Container Slot
-                this.carriedFoodSlot = new THREE.Group();
-                this.carriedFoodSlot.position.set(0, 1.8, 0.5);
-                this.kirbyGroup.add(this.carriedFoodSlot);
-
-                this.kirbyGroup.position.set(0, 0, 1);
-                this.scene.add(this.kirbyGroup);
-            }
-
-            buildFoodStations() {
-                const stationX = [-4.5, -1.5, 1.5, 4.5];
-                this.stationsGroup = new THREE.Group();
-
-                for (let i = 0; i < 4; i++) {
-                    const stGroup = new THREE.Group();
-                    stGroup.position.set(stationX[i], 0, -1.8);
-
-                    // Pedestal
-                    const pedGeo = new THREE.CylinderGeometry(0.7, 0.8, 1.9, 16);
-                    const pedMat = new THREE.MeshStandardMaterial({ color: 0xfff0e6 });
-                    const ped = new THREE.Mesh(pedGeo, pedMat);
-                    ped.position.y = 0.95;
-                    ped.castShadow = true;
-                    stGroup.add(ped);
-
-                    // Food Model Display
-                    const foodMesh = this.createFoodMesh(i);
-                    foodMesh.position.set(0, 2.2, 0);
-                    stGroup.add(foodMesh);
-
-                    // Glow Light
-                    const light = new THREE.PointLight(FOOD_TYPES[i].color, 0.8, 3);
-                    light.position.set(0, 2.5, 0);
-                    stGroup.add(light);
-                    this.stationLights.push(light);
-
-                    this.stationsGroup.add(stGroup);
-                }
-
-                this.scene.add(this.stationsGroup);
-            }
-
-            createFoodMesh(type) {
+                // Back wall
+                const wallGeo = new THREE.BoxGeometry(30, 15, 1);
+                const wallMat = new THREE.MeshStandardMaterial({ color: 0xFFE4E1 });
+                const wall = new THREE.Mesh(wallGeo, wallMat);
+                wall.position.set(0, 7.5, -8);
+                wall.receiveShadow = true;
+                this.scene.add(wall);
+            },
+            
+            // Procedural Models
+            createFoodModel: function(typeId) {
                 const group = new THREE.Group();
-                switch(type) {
-                    case 0: // Tomato
-                        const tomGeo = new THREE.SphereGeometry(0.4, 16, 16);
-                        const tomMat = new THREE.MeshStandardMaterial({ color: 0xff2a2a, roughness: 0.2 });
-                        const tom = new THREE.Mesh(tomGeo, tomMat);
-                        group.add(tom);
-
-                        // Leaves
-                        const leafGeo = new THREE.ConeGeometry(0.2, 0.2, 5);
-                        const leafMat = new THREE.MeshStandardMaterial({ color: 0x2a9d8f });
+                let geo, mat, mesh;
+                switch(typeId) {
+                    case 0: // Tomato (Red Sphere with green top)
+                        geo = new THREE.SphereGeometry(0.5, 16, 16);
+                        mat = new THREE.MeshStandardMaterial({ color: 0xFF0000, roughness: 0.2 });
+                        mesh = new THREE.Mesh(geo, mat);
+                        mesh.castShadow = true;
+                        group.add(mesh);
+                        const leafGeo = new THREE.ConeGeometry(0.2, 0.3, 4);
+                        const leafMat = new THREE.MeshStandardMaterial({ color: 0x00FF00 });
                         const leaf = new THREE.Mesh(leafGeo, leafMat);
-                        leaf.position.y = 0.4;
-                        leaf.rotation.x = Math.PI;
+                        leaf.position.y = 0.5;
                         group.add(leaf);
                         break;
-
-                    case 1: // Energy Drink
-                        const canGeo = new THREE.CylinderGeometry(0.25, 0.25, 0.7, 16);
-                        const canMat = new THREE.MeshStandardMaterial({ color: 0x2a9d8f, metalness: 0.5, roughness: 0.2 });
-                        const can = new THREE.Mesh(canGeo, canMat);
-                        group.add(can);
-
-                        const strawGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.9);
-                        const strawMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
-                        const straw = new THREE.Mesh(strawGeo, strawMat);
-                        straw.position.set(0.1, 0.2, 0);
-                        straw.rotation.z = -0.2;
-                        group.add(straw);
+                    case 1: // Drink (Cylinder)
+                        geo = new THREE.CylinderGeometry(0.3, 0.3, 1, 16);
+                        mat = new THREE.MeshStandardMaterial({ color: 0x00FF00, metalness: 0.5, roughness: 0.2 });
+                        mesh = new THREE.Mesh(geo, mat);
+                        mesh.castShadow = true;
+                        group.add(mesh);
                         break;
-
-                    case 2: // Car Cake
-                        const carGeo = new THREE.BoxGeometry(0.6, 0.3, 0.8);
-                        const carMat = new THREE.MeshStandardMaterial({ color: 0xff7b9c });
-                        const car = new THREE.Mesh(carGeo, carMat);
-                        group.add(car);
-
-                        // Roof
-                        const roofGeo = new THREE.BoxGeometry(0.5, 0.25, 0.4);
-                        const roof = new THREE.Mesh(roofGeo, carMat);
-                        roof.position.set(0, 0.25, -0.1);
-                        group.add(roof);
-
-                        // Wheels
-                        const wheelGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.1, 12);
-                        const wheelMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
-                        for (let wx of [-0.3, 0.3]) {
-                            for (let wz of [-0.25, 0.25]) {
-                                const w = new THREE.Mesh(wheelGeo, wheelMat);
-                                w.rotation.z = Math.PI / 2;
-                                w.position.set(wx, -0.12, wz);
-                                group.add(w);
-                            }
-                        }
+                    case 2: // Cake (Yellow block with pink dots)
+                        geo = new THREE.BoxGeometry(0.8, 0.5, 0.8);
+                        mat = new THREE.MeshStandardMaterial({ color: 0xFFFF00 });
+                        mesh = new THREE.Mesh(geo, mat);
+                        mesh.castShadow = true;
+                        group.add(mesh);
+                        const icingGeo = new THREE.BoxGeometry(0.85, 0.1, 0.85);
+                        const icingMat = new THREE.MeshStandardMaterial({ color: 0xFF69B4 });
+                        const icing = new THREE.Mesh(icingGeo, icingMat);
+                        icing.position.y = 0.25;
+                        group.add(icing);
                         break;
-
-                    case 3: // Burger
-                        const bunMat = new THREE.MeshStandardMaterial({ color: 0xd4a373 });
-                        const pattyMat = new THREE.MeshStandardMaterial({ color: 0x582f0e });
-                        const cheeseMat = new THREE.MeshStandardMaterial({ color: 0xffcc00 });
-
-                        const bBot = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.15), bunMat);
-                        bBot.position.y = -0.15;
-                        group.add(bBot);
-
-                        const patty = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.1), pattyMat);
-                        patty.position.y = -0.02;
-                        group.add(patty);
-
-                        const cheese = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.02, 0.45), cheeseMat);
-                        cheese.position.y = 0.04;
-                        group.add(cheese);
-
-                        const bTop = new THREE.Mesh(new THREE.SphereGeometry(0.41, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2), bunMat);
-                        bTop.position.y = 0.05;
-                        group.add(bTop);
+                    case 3: // Burger (Stacked cylinders)
+                        const bunMat = new THREE.MeshStandardMaterial({ color: 0xD2B48C });
+                        const meatMat = new THREE.MeshStandardMaterial({ color: 0x5C4033 });
+                        const letMat = new THREE.MeshStandardMaterial({ color: 0x32CD32 });
+                        
+                        const bottomBun = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 0.2, 16), bunMat);
+                        bottomBun.position.y = -0.3;
+                        const meat = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 0.15, 16), meatMat);
+                        meat.position.y = -0.1;
+                        const lettuce = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.05, 16), letMat);
+                        lettuce.position.y = 0.05;
+                        const topBun = new THREE.Mesh(new THREE.SphereGeometry(0.4, 16, 16, 0, Math.PI*2, 0, Math.PI/2), bunMat);
+                        topBun.position.y = 0.1;
+                        
+                        group.add(bottomBun, meat, lettuce, topBun);
+                        group.children.forEach(c => c.castShadow = true);
                         break;
                 }
                 return group;
-            }
+            },
 
-            createWaddleDeeMesh() {
+            createKirby: function() {
                 const group = new THREE.Group();
-
+                
                 // Body
-                const bodyGeo = new THREE.SphereGeometry(0.7, 24, 24);
-                const bodyMat = new THREE.MeshStandardMaterial({ color: 0xe07a5f, roughness: 0.4 });
+                const bodyGeo = new THREE.SphereGeometry(1, 32, 32);
+                const bodyMat = new THREE.MeshStandardMaterial({ color: 0xFFB7C5, roughness: 0.5 });
                 const body = new THREE.Mesh(bodyGeo, bodyMat);
-                body.position.y = 0.7;
+                body.position.y = 1;
                 body.castShadow = true;
                 group.add(body);
+                
+                // Feet
+                const footGeo = new THREE.CapsuleGeometry(0.3, 0.4, 16, 16);
+                const footMat = new THREE.MeshStandardMaterial({ color: 0xFF0000 });
+                const footL = new THREE.Mesh(footGeo, footMat);
+                footL.rotation.z = Math.PI/2;
+                footL.position.set(-0.5, 0.2, 0.5);
+                footL.castShadow = true;
+                const footR = footL.clone();
+                footR.position.set(0.5, 0.2, 0.5);
+                group.add(footL, footR);
 
-                // Face Patch
-                const faceGeo = new THREE.SphereGeometry(0.68, 24, 24, 0, Math.PI * 2, 0, Math.PI / 1.8);
-                const faceMat = new THREE.MeshStandardMaterial({ color: 0xf4a261 });
+                // Arms
+                const armGeo = new THREE.SphereGeometry(0.35, 16, 16);
+                const armL = new THREE.Mesh(armGeo, bodyMat);
+                armL.position.set(-1, 1, 0);
+                const armR = armL.clone();
+                armR.position.set(1, 1, 0);
+                group.add(armL, armR);
+
+                // Face (Simple planes)
+                const eyeGeo = new THREE.PlaneGeometry(0.15, 0.4);
+                const eyeMat = new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.DoubleSide });
+                const eyeL = new THREE.Mesh(eyeGeo, eyeMat);
+                eyeL.position.set(-0.3, 1.2, 0.95);
+                // Curve slightly to sphere
+                eyeL.lookAt(-0.3, 1.2, 2);
+                const eyeR = eyeL.clone();
+                eyeR.position.set(0.3, 1.2, 0.95);
+                eyeR.lookAt(0.3, 1.2, 2);
+                
+                const blushGeo = new THREE.PlaneGeometry(0.2, 0.1);
+                const blushMat = new THREE.MeshBasicMaterial({ color: 0xFF69B4, transparent: true, opacity: 0.7 });
+                const blushL = new THREE.Mesh(blushGeo, blushMat);
+                blushL.position.set(-0.6, 1, 0.9);
+                blushL.lookAt(-0.6, 1, 2);
+                const blushR = blushL.clone();
+                blushR.position.set(0.6, 1, 0.9);
+                blushR.lookAt(0.6, 1, 2);
+
+                group.add(eyeL, eyeR, blushL, blushR);
+
+                // Inventory holder
+                const holdPos = new THREE.Group();
+                holdPos.position.set(0, 2.5, 0);
+                group.add(holdPos);
+                group.userData = { holdPos: holdPos, feet: [footL, footR], arms: [armL, armR] };
+
+                this.scene.add(group);
+                return group;
+            },
+
+            createWaddleDee: function() {
+                const group = new THREE.Group();
+                
+                // Body
+                const bodyGeo = new THREE.SphereGeometry(0.9, 32, 32);
+                const bodyMat = new THREE.MeshStandardMaterial({ color: 0xFF4500, roughness: 0.6 });
+                const body = new THREE.Mesh(bodyGeo, bodyMat);
+                body.position.y = 0.9;
+                body.castShadow = true;
+                group.add(body);
+                
+                // Face area
+                const faceGeo = new THREE.SphereGeometry(0.85, 32, 32, 0, Math.PI, 0, Math.PI/2);
+                const faceMat = new THREE.MeshStandardMaterial({ color: 0xFFD700, roughness: 0.8 });
                 const face = new THREE.Mesh(faceGeo, faceMat);
-                face.position.set(0, 0.7, 0.05);
-                face.rotation.x = Math.PI / 2;
+                face.position.set(0, 0.9, 0.1);
+                face.rotation.x = Math.PI/2;
                 group.add(face);
-
-                // Bandana / Hat
-                const hatGeo = new THREE.ConeGeometry(0.65, 0.5, 16);
-                const hatMat = new THREE.MeshStandardMaterial({ color: 0x2a9d8f });
-                const hat = new THREE.Mesh(hatGeo, hatMat);
-                hat.position.set(0, 1.35, 0);
-                group.add(hat);
 
                 // Feet
                 const footGeo = new THREE.SphereGeometry(0.3, 16, 16);
-                footGeo.scale(1, 0.4, 1.2);
-                const footMat = new THREE.MeshStandardMaterial({ color: 0xf4a261 });
-                const lFoot = new THREE.Mesh(footGeo, footMat);
-                lFoot.position.set(-0.4, 0.15, 0.1);
-                const rFoot = new THREE.Mesh(footGeo, footMat);
-                rFoot.position.set(0.4, 0.15, 0.1);
-                group.add(lFoot);
-                group.add(rFoot);
+                const footMat = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
+                const footL = new THREE.Mesh(footGeo, footMat);
+                footL.position.set(-0.4, 0.2, 0.5);
+                footL.scale.z = 1.5;
+                footL.castShadow = true;
+                const footR = footL.clone();
+                footR.position.set(0.4, 0.2, 0.5);
+                group.add(footL, footR);
 
+                group.userData = { isWalking: false, walkTime: 0, feet: [footL, footR] };
                 return group;
-            }
+            },
 
-            onWindowResize() {
+            onWindowResize: function() {
                 this.camera.aspect = window.innerWidth / window.innerHeight;
                 this.camera.updateProjectionMatrix();
                 this.renderer.setSize(window.innerWidth, window.innerHeight);
+            },
+
+            render: function() {
+                const dt = this.clock.getDelta();
+                
+                // Animate station foods
+                if(this.objects.stations) {
+                    const time = Date.now() * 0.002;
+                    this.objects.stations.forEach(st => {
+                        st.icon.position.y = st.icon.userData.startY + Math.sin(time + st.icon.userData.offset) * 0.2;
+                        st.icon.rotation.y += dt;
+                    });
+                }
+                
+                // Pulse delivery zone if near
+                if(this.objects.deliveryZone && player.mesh) {
+                    const dist = Math.abs(player.mesh.position.x);
+                    const zDist = Math.abs(player.mesh.position.z - 0); // counter z
+                    if(dist < 2 && zDist < 3 && player.inventory !== null) {
+                        this.objects.deliveryZone.material.opacity = 0.3 + Math.sin(Date.now()*0.01)*0.2;
+                    } else {
+                        this.objects.deliveryZone.material.opacity = 0.1;
+                    }
+                }
+
+                this.renderer.render(this.scene, this.camera);
+            },
+            
+            clearSceneExtras: function() {
+                // Remove all customers and held items
+                customers.list.forEach(c => {
+                    this.scene.remove(c.mesh);
+                    if(c.bubbleDOM) c.bubbleDOM.remove();
+                });
+                customers.list = [];
+                if(player.heldMesh) {
+                    player.mesh.userData.holdPos.remove(player.heldMesh);
+                    player.heldMesh = null;
+                }
+                player.inventory = null;
+                player.mesh.position.set(0, 0, -3);
+            },
+            
+            showFloatingText: function(text, pos3D, color) {
+                const el = document.createElement('div');
+                el.className = 'floating-text';
+                el.innerText = text;
+                if(color) el.style.color = color;
+                
+                // Project 3D to 2D
+                const vector = pos3D.clone();
+                vector.project(this.camera);
+                
+                const x = (vector.x * .5 + .5) * window.innerWidth;
+                const y = (vector.y * -.5 + .5) * window.innerHeight;
+                
+                el.style.left = `${x}px`;
+                el.style.top = `${y}px`;
+                
+                document.getElementById('game-container').appendChild(el);
+                setTimeout(() => el.remove(), 1000);
             }
-        }
+        };
 
-        // MAIN GAME ENGINE LOGIC
-        class GameEngine {
-            constructor() {
-                this.scene3d = new CafeScene();
+        // --- PLAYER LOGIC ---
+        const player = {
+            mesh: null,
+            inventory: null,
+            heldMesh: null,
+            speed: 10,
+            bounds: { xMin: -7, xMax: 7, zMin: -5, zMax: -1.5 },
+            
+            init: function() {
+                this.mesh = engine.createKirby();
+                this.mesh.position.set(0, 0, -3); // Behind counter
+            },
+            
+            update: function(dt) {
+                if(game.state !== 'PLAYING') return;
 
-                // State
-                this.state = 'MENU'; // MENU, PLAYING, GAMEOVER
-                this.difficulty = 'EASY';
-                this.timeLeft = 50;
-                this.score = 0;
-                this.combo = 1;
-                this.maxCombo = 1;
-                this.satisfaction = 100;
-                this.customersServed = 0;
-                this.wrongOrders = 0;
-                this.isLunchRush = false;
+                let dx = 0, dz = 0;
+                
+                // Keyboard
+                if(input.keys['KeyA']) dx -= 1;
+                if(input.keys['KeyD']) dx += 1;
+                if(input.keys['KeyW']) dz -= 1;
+                if(input.keys['KeyS']) dz += 1;
+                
+                // Joystick
+                if(input.joystick.active) {
+                    dx = input.joystick.x;
+                    dz = input.joystick.y;
+                }
 
-                // Player Logic
-                this.playerPos = new THREE.Vector2(0, 2);
-                this.playerVel = new THREE.Vector2(0, 0);
-                this.selectedFood = null;
-
-                // Customer Logic
-                this.customers = [];
-                this.activeCustomer = null;
-                this.nextCustomerOrder = null;
-                this.customerTimer = 0;
-
-                // Controls
-                this.keys = {};
-                this.joystickVector = new THREE.Vector2(0, 0);
-
-                this.setupInputs();
-                this.lastTime = performance.now();
-                requestAnimationFrame((t) => this.loop(t));
-            }
-
-            setupInputs() {
-                window.addEventListener('keydown', (e) => {
-                    this.keys[e.key.toLowerCase()] = true;
-                    if (['1', '2', '3', '4'].includes(e.key)) {
-                        this.selectFood(parseInt(e.key) - 1);
-                    }
-                    if (e.key.toLowerCase() === 'e' || e.key === ' ') {
-                        this.interact();
-                    }
-                });
-
-                window.addEventListener('keyup', (e) => {
-                    this.keys[e.key.toLowerCase()] = false;
-                });
-
-                // Touch Joystick
-                const joyZone = document.getElementById('joystick-zone');
-                const joyKnob = document.getElementById('joystick-knob');
-                let joyTouchId = null;
-
-                joyZone.addEventListener('touchstart', (e) => {
-                    for (let touch of e.changedTouches) {
-                        joyTouchId = touch.identifier;
-                        this.updateJoystick(touch, joyZone, joyKnob);
-                    }
-                });
-
-                joyZone.addEventListener('touchmove', (e) => {
-                    for (let touch of e.changedTouches) {
-                        if (touch.identifier === joyTouchId) {
-                            this.updateJoystick(touch, joyZone, joyKnob);
+                // Normalize and apply speed
+                if(dx !== 0 || dz !== 0) {
+                    const len = Math.sqrt(dx*dx + dz*dz);
+                    dx /= len; dz /= len;
+                    
+                    this.mesh.position.x += dx * this.speed * dt;
+                    this.mesh.position.z += dz * this.speed * dt;
+                    
+                    // Clamp to bounds
+                    this.mesh.position.x = Math.max(this.bounds.xMin, Math.min(this.bounds.xMax, this.mesh.position.x));
+                    this.mesh.position.z = Math.max(this.bounds.zMin, Math.min(this.bounds.zMax, this.mesh.position.z));
+                    
+                    // Rotate to face movement
+                    const angle = Math.atan2(dx, dz);
+                    this.mesh.rotation.y = angle;
+                    
+                    // Walk animation
+                    const time = Date.now() * 0.01;
+                    this.mesh.userData.feet[0].position.z = 0.5 + Math.sin(time) * 0.3;
+                    this.mesh.userData.feet[1].position.z = 0.5 + Math.sin(time + Math.PI) * 0.3;
+                    this.mesh.userData.arms[0].rotation.x = Math.sin(time) * 0.5;
+                    this.mesh.userData.arms[1].rotation.x = Math.sin(time + Math.PI) * 0.5;
+                } else {
+                    // Idle
+                    this.mesh.userData.feet[0].position.z = 0.5;
+                    this.mesh.userData.feet[1].position.z = 0.5;
+                    this.mesh.userData.arms[0].rotation.x = 0;
+                    this.mesh.userData.arms[1].rotation.x = 0;
+                }
+                
+                // Interaction check (E key or Action button)
+                if(input.consumeAction()) {
+                    this.interact();
+                }
+            },
+            
+            interact: function() {
+                // Check if near delivery zone
+                const distToCenter = Math.abs(this.mesh.position.x);
+                if(distToCenter < 2.5 && this.mesh.position.z > -2.5) {
+                    // Try to deliver
+                    if(this.inventory !== null && customers.list.length > 0) {
+                        const currentCustomer = customers.list[0];
+                        if(currentCustomer.state === 'waiting') {
+                            game.serveOrder(this.inventory);
+                            this.clearInventory();
                         }
                     }
+                    return;
+                }
+
+                // Check stations
+                let nearestStation = null;
+                let minDist = 2; // Interaction radius
+                
+                engine.objects.stations.forEach(st => {
+                    // Only check available items for current difficulty
+                    if(!game.config.items.includes(st.type)) return;
+                    
+                    const dist = Math.sqrt(Math.pow(this.mesh.position.x - st.x, 2) + Math.pow(this.mesh.position.z - (-4), 2));
+                    if(dist < minDist) {
+                        minDist = dist;
+                        nearestStation = st;
+                    }
                 });
 
-                const resetJoy = () => {
-                    joyTouchId = null;
-                    joyKnob.style.left = '35px';
-                    joyKnob.style.top = '35px';
-                    this.joystickVector.set(0, 0);
-                };
-
-                joyZone.addEventListener('touchend', resetJoy);
-                joyZone.addEventListener('touchcancel', resetJoy);
-
-                document.getElementById('btn-serve').addEventListener('click', () => this.interact());
-            }
-
-            updateJoystick(touch, zone, knob) {
-                const rect = zone.getBoundingClientRect();
-                const centerX = rect.left + rect.width / 2;
-                const centerY = rect.top + rect.height / 2;
-
-                let dx = touch.clientX - centerX;
-                let dy = touch.clientY - centerY;
-                const dist = Math.hypot(dx, dy);
-                const maxDist = rect.width / 2;
-
-                if (dist > maxDist) {
-                    dx = (dx / dist) * maxDist;
-                    dy = (dy / dist) * maxDist;
+                if(nearestStation) {
+                    this.grabFood(nearestStation.type);
                 }
-
-                knob.style.left = (35 + dx) + 'px';
-                knob.style.top = (35 + dy) + 'px';
-
-                this.joystickVector.set(dx / maxDist, dy / maxDist);
-            }
-
-            start(diff) {
-                this.difficulty = diff;
-                this.timeLeft = 50;
-                this.score = 0;
-                this.combo = 1;
-                this.maxCombo = 1;
-                this.satisfaction = 100;
-                this.customersServed = 0;
-                this.wrongOrders = 0;
-                this.isLunchRush = false;
-                this.selectedFood = null;
-                this.state = 'PLAYING';
-
-                // Clear Old Customers
-                this.customers.forEach(c => this.scene3d.scene.remove(c.mesh));
-                this.customers = [];
-
-                // Reset Kirby
-                this.playerPos.set(0, 1);
-                this.updateKirbyHeldFood();
-
-                ui.hideAll();
-                document.getElementById('top-hud').classList.remove('lunch-rush');
-                document.getElementById('rush-banner').classList.remove('active');
-
-                this.generateNextOrder();
-                this.spawnCustomer();
-
-                audio.playBGM('normal');
-                audio.playSynthSound('pickup');
-            }
-
-            restart() {
-                this.start(this.difficulty);
-            }
-
-            selectFood(index) {
-                if (this.state !== 'PLAYING') return;
-
-                // Validate if unlocked for current difficulty
-                if (this.difficulty === 'EASY' && index > 1) return;
-                if (this.difficulty === 'HUSTLE' && index > 2) return;
-
-                this.selectedFood = index;
-                this.updateKirbyHeldFood();
-                audio.playSynthSound('pickup');
-
-                // UI highlight
-                document.querySelectorAll('.station-btn').forEach((btn, i) => {
-                    if (i === index) btn.classList.add('active');
-                    else btn.classList.remove('active');
-                });
-            }
-
-            updateKirbyHeldFood() {
-                // Clear existing mesh
-                while (this.scene3d.carriedFoodSlot.children.length > 0) {
-                    this.scene3d.carriedFoodSlot.remove(this.scene3d.carriedFoodSlot.children[0]);
+            },
+            
+            grabFood: function(typeId) {
+                if(!game.config.items.includes(typeId)) return;
+                
+                audio.sfx.pickup();
+                this.inventory = typeId;
+                
+                if(this.heldMesh) {
+                    this.mesh.userData.holdPos.remove(this.heldMesh);
                 }
-
-                if (this.selectedFood !== null) {
-                    const foodMesh = this.scene3d.createFoodMesh(this.selectedFood);
-                    foodMesh.scale.set(0.7, 0.7, 0.7);
-                    this.scene3d.carriedFoodSlot.add(foodMesh);
+                
+                this.heldMesh = engine.createFoodModel(typeId);
+                this.heldMesh.scale.set(0.8, 0.8, 0.8);
+                this.mesh.userData.holdPos.add(this.heldMesh);
+                
+                // Visual feedback (jump slightly)
+                this.mesh.position.y = 0.5;
+                setTimeout(() => this.mesh.position.y = 0, 100);
+            },
+            
+            clearInventory: function() {
+                this.inventory = null;
+                if(this.heldMesh) {
+                    this.mesh.userData.holdPos.remove(this.heldMesh);
+                    this.heldMesh = null;
                 }
+                // Deliver anim
+                this.mesh.userData.arms[0].rotation.z = Math.PI/2;
+                this.mesh.userData.arms[1].rotation.z = -Math.PI/2;
+                setTimeout(() => {
+                    this.mesh.userData.arms[0].rotation.z = 0;
+                    this.mesh.userData.arms[1].rotation.z = 0;
+                }, 200);
             }
+        };
 
-            generateNextOrder() {
-                let maxTypes = 2;
-                if (this.difficulty === 'HUSTLE') maxTypes = 3;
-                if (this.difficulty === 'FRENZY') maxTypes = 4;
-
-                this.nextCustomerOrder = Math.floor(Math.random() * maxTypes);
-            }
-
-            spawnCustomer() {
-                const orderId = this.nextCustomerOrder !== null ? this.nextCustomerOrder : 0;
-                this.generateNextOrder();
-
-                const mesh = this.scene3d.createWaddleDeeMesh();
-                mesh.position.set(-8, 0, -2); // Spawn off-screen left
-
-                const isHidden = (this.difficulty === 'FRENZY' && Math.random() < 0.3);
-
+        // --- CUSTOMER LOGIC ---
+        const customers = {
+            list: [],
+            spawnTimer: 0,
+            
+            update: function(dt) {
+                if(game.state !== 'PLAYING') return;
+                
+                // Spawn logic
+                this.spawnTimer -= dt * 1000;
+                if(this.spawnTimer <= 0 && this.list.length < 3) {
+                    this.spawn();
+                    this.spawnTimer = game.config.spawnRate / (game.lunchRush ? 1.5 : 1);
+                }
+                
+                // Update existing
+                for(let i = this.list.length - 1; i >= 0; i--) {
+                    const c = this.list[i];
+                    
+                    if(c.state === 'entering') {
+                        // Move to position
+                        const targetX = c.targetSlot * 3.5;
+                        const dx = targetX - c.mesh.position.x;
+                        
+                        if(Math.abs(dx) > 0.1) {
+                            c.mesh.position.x += Math.sign(dx) * 5 * dt;
+                            
+                            // Walk anim
+                            c.userData.walkTime += dt * 15;
+                            c.userData.feet[0].position.z = 0.5 + Math.sin(c.userData.walkTime) * 0.3;
+                            c.userData.feet[1].position.z = 0.5 + Math.sin(c.userData.walkTime + Math.PI) * 0.3;
+                        } else {
+                            c.mesh.position.x = targetX;
+                            c.state = 'waiting';
+                            c.userData.feet[0].position.z = 0.5;
+                            c.userData.feet[1].position.z = 0.5;
+                            this.showBubble(c);
+                        }
+                    } else if (c.state === 'leaving') {
+                        c.mesh.position.x += 8 * dt; // Run away right
+                        c.userData.walkTime += dt * 20;
+                        c.userData.feet[0].position.z = 0.5 + Math.sin(c.userData.walkTime) * 0.4;
+                        c.userData.feet[1].position.z = 0.5 + Math.sin(c.userData.walkTime + Math.PI) * 0.4;
+                        
+                        if(c.mesh.position.x > 15) {
+                            engine.scene.remove(c.mesh);
+                            this.list.splice(i, 1);
+                            this.recalculateSlots();
+                        }
+                    }
+                    
+                    // Update Bubble 2D Position
+                    if(c.bubbleDOM && c.state === 'waiting') {
+                        const vector = c.mesh.position.clone();
+                        vector.y += 2.5; // Above head
+                        vector.project(engine.camera);
+                        const x = (vector.x * .5 + .5) * window.innerWidth;
+                        const y = (vector.y * -.5 + .5) * window.innerHeight;
+                        c.bubbleDOM.style.left = `${x}px`;
+                        c.bubbleDOM.style.top = `${y}px`;
+                    }
+                }
+            },
+            
+            spawn: function() {
+                const mesh = engine.createWaddleDee();
+                mesh.position.set(-15, 0, 3); // Start offscreen left, front of counter
+                mesh.rotation.y = Math.PI; // Face player
+                engine.scene.add(mesh);
+                
+                // Pick random order based on difficulty
+                const availableItems = game.config.items;
+                const orderId = availableItems[Math.floor(Math.random() * availableItems.length)];
+                
                 const customer = {
                     mesh: mesh,
-                    orderFoodId: orderId,
-                    isHiddenOrder: isHidden,
-                    revealTimer: isHidden ? 3.0 : 0,
-                    targetX: 0,
-                    patience: 12.0,
-                    maxPatience: 12.0
+                    userData: mesh.userData,
+                    state: 'entering', // entering, waiting, leaving
+                    order: orderId,
+                    targetSlot: this.list.length, // 0 is center, 1 is right, etc
+                    bubbleDOM: null
                 };
-
-                this.scene3d.scene.add(mesh);
-                this.customers.push(customer);
-                this.activeCustomer = customer;
-
-                ui.updateOrderIcons(customer.orderFoodId, this.nextCustomerOrder, customer.isHiddenOrder);
-            }
-
-            interact() {
-                if (this.state !== 'PLAYING') return;
-
-                // Check distance to active customer
-                if (this.activeCustomer && this.playerPos.distanceTo(new THREE.Vector2(0, -2)) < 3.0) {
-                    if (this.selectedFood === null) {
-                        return; // No food held
-                    }
-
-                    if (this.selectedFood === this.activeCustomer.orderFoodId) {
-                        // Correct Order!
-                        this.customersServed++;
-                        const points = 100 * this.combo;
-                        this.score += points;
-                        this.combo++;
-                        if (this.combo > this.maxCombo) this.maxCombo = this.combo;
-
-                        this.satisfaction = Math.min(100, this.satisfaction + 15);
-
-                        audio.playSynthSound('correct');
-                        ui.spawnFloatingText(`+${points}!`, window.innerWidth / 2, window.innerHeight / 2);
-
-                        // Animate & remove customer
-                        this.removeActiveCustomer(true);
-                    } else {
-                        // Wrong Order!
-                        this.wrongOrders++;
-                        this.combo = 1;
-                        this.satisfaction = Math.max(0, this.satisfaction - 20);
-
-                        audio.playSynthSound('wrong');
-                        ui.spawnFloatingText(`WRONG!`, window.innerWidth / 2, window.innerHeight / 2);
-                    }
-
-                    this.selectedFood = null;
-                    this.updateKirbyHeldFood();
-                }
-            }
-
-            removeActiveCustomer(satisfied) {
-                if (!this.activeCustomer) return;
-
-                const cust = this.activeCustomer;
-                this.activeCustomer = null;
-
-                // Exit animation
-                let exitX = 8;
-                let t = 0;
-                const anim = () => {
-                    t += 0.05;
-                    cust.mesh.position.x += 0.2;
-                    cust.mesh.position.y = Math.abs(Math.sin(t * 5)) * 0.4;
-                    if (cust.mesh.position.x < exitX) {
-                        requestAnimationFrame(anim);
-                    } else {
-                        this.scene3d.scene.remove(cust.mesh);
-                    }
-                };
-                anim();
-
-                // Spawn next after delay
-                setTimeout(() => {
-                    if (this.state === 'PLAYING') {
-                        this.spawnCustomer();
-                    }
-                }, this.isLunchRush ? 500 : 1200);
-            }
-
-            loop(timestamp) {
-                const dt = Math.min((timestamp - this.lastTime) / 1000, 0.1);
-                this.lastTime = timestamp;
-
-                if (this.state === 'PLAYING') {
-                    this.updateGameplay(dt);
-                }
-
-                // Render 3D Scene
-                this.scene3d.renderer.render(this.scene3d.scene, this.scene3d.camera);
-                requestAnimationFrame((t) => this.loop(t));
-            }
-
-            updateGameplay(dt) {
-                // Timer
-                this.timeLeft -= dt;
-                document.getElementById('hud-time').innerText = Math.max(0, Math.ceil(this.timeLeft));
-                document.getElementById('hud-score').innerText = this.score;
-                document.getElementById('hud-combo').innerText = 'x' + this.combo;
-
-                // Check Lunch Rush Event
-                if (this.timeLeft <= 20 && !this.isLunchRush) {
-                    this.isLunchRush = true;
-                    document.getElementById('top-hud').classList.add('lunch-rush');
-                    const banner = document.getElementById('rush-banner');
-                    banner.classList.add('active');
-                    setTimeout(() => banner.classList.remove('active'), 2500);
-
-                    audio.playBGM('rush');
-                    audio.playSynthSound('rush');
-                }
-
-                // Satisfaction Decay
-                let decayRate = 1.5;
-                if (this.difficulty === 'HUSTLE') decayRate = 2.2;
-                if (this.difficulty === 'FRENZY') decayRate = 3.0;
-                if (this.isLunchRush) decayRate *= 1.6;
-
-                this.satisfaction -= decayRate * dt;
-                document.getElementById('sat-bar').style.width = Math.max(0, this.satisfaction) + '%';
-
-                if (this.satisfaction <= 0) {
-                    this.endGame(true); // Shift Failed
-                    return;
-                }
-
-                if (this.timeLeft <= 0) {
-                    this.endGame(false); // Time limit complete
-                    return;
-                }
-
-                // Update Movement (PC Keys + Mobile Joystick)
-                let moveX = 0;
-                let moveZ = 0;
-
-                if (this.keys['a'] || this.keys['arrowleft']) moveX -= 1;
-                if (this.keys['d'] || this.keys['arrowright']) moveX += 1;
-                if (this.keys['w'] || this.keys['arrowup']) moveZ -= 1;
-                if (this.keys['s'] || this.keys['arrowdown']) moveZ += 1;
-
-                if (this.joystickVector.length() > 0.1) {
-                    moveX = this.joystickVector.x;
-                    moveZ = this.joystickVector.y;
-                }
-
-                const speed = 6.0;
-                this.playerPos.x += moveX * speed * dt;
-                this.playerPos.y += moveZ * speed * dt;
-
-                // Clamp Boundaries
-                this.playerPos.x = THREE.MathUtils.clamp(this.playerPos.x, -5.5, 5.5);
-                this.playerPos.y = THREE.MathUtils.clamp(this.playerPos.y, -1.0, 4.5);
-
-                // Update Kirby 3D Mesh
-                this.scene3d.kirbyGroup.position.x = this.playerPos.x;
-                this.scene3d.kirbyGroup.position.z = this.playerPos.y;
-
-                const isMoving = Math.abs(moveX) > 0.1 || Math.abs(moveZ) > 0.1;
-                if (isMoving) {
-                    const angle = Math.atan2(moveX, moveZ);
-                    this.scene3d.kirbyGroup.rotation.y = angle;
-
-                    // Walking Bounce Anim
-                    this.scene3d.kirbyBody.position.y = 0.8 + Math.abs(Math.sin(timestamp * 0.01)) * 0.2;
-                } else {
-                    // Idle Bounce Anim
-                    const timestamp = performance.now();
-                    this.scene3d.kirbyBody.position.y = 0.8 + Math.sin(timestamp * 0.004) * 0.05;
-                }
-
-                // Update Active Customer Logic
-                if (this.activeCustomer) {
-                    const cust = this.activeCustomer;
-                    // Move to center counter if entering
-                    if (cust.mesh.position.x < cust.targetX) {
-                        cust.mesh.position.x += 4.0 * dt;
-                    }
-
-                    // Hidden order timer
-                    if (cust.isHiddenOrder) {
-                        cust.revealTimer -= dt;
-                        if (cust.revealTimer <= 0) {
-                            cust.isHiddenOrder = false;
-                            ui.updateOrderIcons(cust.orderFoodId, this.nextCustomerOrder, false);
+                
+                this.list.push(customer);
+                audio.sfx.spawn();
+                
+                // Update Next Order UI
+                ui.updateOrderDisplay();
+            },
+            
+            showBubble: function(c) {
+                const el = document.createElement('div');
+                el.className = 'bubble-3d';
+                el.innerHTML = Object.values(FOOD_TYPES).find(f => f.id === c.order).icon;
+                document.getElementById('3d-bubbles-container').appendChild(el);
+                
+                // Reveal logic (sometimes delay reveal slightly for difficulty)
+                if(game.difficulty === 'frenzy' && Math.random() > 0.5) {
+                    el.innerHTML = '❓';
+                    setTimeout(() => {
+                        if(c.state === 'waiting') {
+                            el.innerHTML = Object.values(FOOD_TYPES).find(f => f.id === c.order).icon;
+                            el.style.transform = 'translate(-50%, -50%) scale(1.2)';
+                            setTimeout(()=>el.style.transform = 'translate(-50%, -50%) scale(1)', 150);
                         }
-                    }
-
-                    // Customer bounce while waiting
-                    cust.mesh.position.y = Math.sin(performance.now() * 0.005) * 0.08;
+                    }, 1000);
                 }
-
-                // Animate Food Station Displays
-                this.scene3d.stationsGroup.children.forEach((st, idx) => {
-                    const displayFood = st.children[1];
-                    if (displayFood) {
-                        displayFood.rotation.y += 1.0 * dt;
+                
+                // Pop animation
+                setTimeout(() => el.style.opacity = 1, 50);
+                c.bubbleDOM = el;
+                
+                ui.updateOrderDisplay();
+            },
+            
+            recalculateSlots: function() {
+                this.list.forEach((c, index) => {
+                    if(c.state !== 'leaving') {
+                        c.targetSlot = index;
+                        if(c.state === 'waiting') c.state = 'entering'; // Force move to new slot
                     }
                 });
+                ui.updateOrderDisplay();
             }
-
-            endGame(failed) {
-                this.state = 'GAMEOVER';
-                audio.stopBGM();
-
-                if (failed) {
-                    audio.playSynthSound('wrong');
-                } else {
-                    audio.playSynthSound('win');
-                    // Unlock next difficulty
-                    if (this.difficulty === 'EASY') Storage.saveUnlock('HUSTLE');
-                    if (this.difficulty === 'HUSTLE') Storage.saveUnlock('FRENZY');
-                }
-
-                const stats = {
-                    served: this.customersServed,
-                    maxCombo: this.maxCombo,
-                    wrong: this.wrongOrders,
-                    satisfaction: this.satisfaction,
-                    score: this.score,
-                    failed: failed
-                };
-
-                const isNewHigh = Storage.saveScore(this.difficulty, this.score);
-                ui.showResults(stats, isNewHigh);
-            }
-        }
-
-        // Initialize Engine
-        let game;
-        window.onload = () => {
-            game = new GameEngine();
         };
+
+        // --- INPUT HANDLING ---
+        const input = {
+            keys: {},
+            actionPressed: false,
+            joystick: { active: false, startX: 0, startY: 0, x: 0, y: 0 },
+            
+            init: function() {
+                window.addEventListener('keydown', (e) => {
+                    this.keys[e.code] = true;
+                    if(e.code === 'KeyE') this.actionPressed = true;
+                    
+                    // Quick Select 1-4
+                    if(game.state === 'PLAYING') {
+                        if(e.code === 'Digit1') player.grabFood(0);
+                        if(e.code === 'Digit2') player.grabFood(1);
+                        if(e.code === 'Digit3') player.grabFood(2);
+                        if(e.code === 'Digit4') player.grabFood(3);
+                    }
+                });
+                window.addEventListener('keyup', (e) => this.keys[e.code] = false);
+                
+                // Mobile Touch
+                const joyArea = document.getElementById('mobile-controls');
+                const joyKnob = document.getElementById('joystick');
+                
+                joyArea.addEventListener('touchstart', (e) => {
+                    this.joystick.active = true;
+                    this.joystick.startX = e.touches[0].clientX;
+                    this.joystick.startY = e.touches[0].clientY;
+                });
+                joyArea.addEventListener('touchmove', (e) => {
+                    if(!this.joystick.active) return;
+                    e.preventDefault();
+                    let dx = e.touches[0].clientX - this.joystick.startX;
+                    let dy = e.touches[0].clientY - this.joystick.startY;
+                    
+                    // Limit distance
+                    const maxDist = 30;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    if(dist > maxDist) {
+                        dx = (dx/dist) * maxDist;
+                        dy = (dy/dist) * maxDist;
+                    }
+                    
+                    joyKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+                    
+                    // Normalize for game input (-1 to 1)
+                    this.joystick.x = dx / maxDist;
+                    this.joystick.y = dy / maxDist;
+                });
+                joyArea.addEventListener('touchend', () => {
+                    this.joystick.active = false;
+                    this.joystick.x = 0;
+                    this.joystick.y = 0;
+                    joyKnob.style.transform = `translate(-50%, -50%)`;
+                });
+                
+                document.getElementById('action-btn').addEventListener('touchstart', (e) => {
+                    e.preventDefault();
+                    this.actionPressed = true;
+                });
+            },
+            
+            consumeAction: function() {
+                if(this.actionPressed) {
+                    this.actionPressed = false;
+                    return true;
+                }
+                return false;
+            }
+        };
+
+        // --- GAME LOGIC ---
+        const game = {
+            state: 'MENU', // MENU, PLAYING, RESULTS
+            difficulty: 'easy',
+            config: null,
+            
+            time: 50,
+            score: 0,
+            combo: 0,
+            maxCombo: 0,
+            satisfaction: 100,
+            customersServed: 0,
+            wrongOrders: 0,
+            lunchRush: false,
+            
+            lastTime: 0,
+            
+            start: function(diff) {
+                this.difficulty = diff;
+                this.config = DIFFICULTIES[diff];
+                this.currentDifficulty = diff;
+                
+                // Reset stats
+                this.time = 50;
+                this.score = 0;
+                this.combo = 0;
+                this.maxCombo = 0;
+                this.satisfaction = 100;
+                this.customersServed = 0;
+                this.wrongOrders = 0;
+                this.lunchRush = false;
+                
+                engine.clearSceneExtras();
+                player.mesh.position.set(0, 0, -3);
+                
+                ui.setupHUD();
+                ui.hideAllScreens();
+                document.getElementById('hud').classList.remove('hidden');
+                
+                this.state = 'PLAYING';
+                customers.spawnTimer = 1000; // First spawn quick
+                
+                audio.playBGM('intro');
+                
+                this.lastTime = performance.now();
+                requestAnimationFrame(this.loop.bind(this));
+            },
+            
+            loop: function(now) {
+                if(this.state !== 'PLAYING') return;
+                
+                const dt = (now - this.lastTime) / 1000;
+                this.lastTime = now;
+                
+                // Update Time
+                this.time -= dt;
+                if(this.time <= 0) {
+                    this.time = 0;
+                    this.end();
+                } else if(this.time <= 20 && !this.lunchRush) {
+                    this.triggerLunchRush();
+                }
+                
+                // Update Satisfaction (decay)
+                if(customers.list.length > 0 && customers.list[0].state === 'waiting') {
+                    const decay = this.config.satDecay * (this.lunchRush ? 1.5 : 1) * dt;
+                    this.satisfaction -= decay;
+                    if(this.satisfaction <= 0) {
+                        this.satisfaction = 0;
+                        this.end(true); // Fail state
+                    }
+                }
+                
+                player.update(dt);
+                customers.update(dt);
+                engine.render();
+                ui.updateHUD();
+                
+                if(this.state === 'PLAYING') {
+                    requestAnimationFrame(this.loop.bind(this));
+                }
+            },
+            
+            serveOrder: function(foodId) {
+                const currentCustomer = customers.list[0];
+                
+                if(foodId === currentCustomer.order) {
+                    // Correct
+                    audio.sfx.correct();
+                    this.combo++;
+                    if(this.combo > this.maxCombo) this.maxCombo = this.combo;
+                    
+                    const basePoints = 100;
+                    const comboBonus = Math.min(this.combo * 10, 100);
+                    const points = basePoints + comboBonus;
+                    this.score += points;
+                    
+                    this.satisfaction = Math.min(100, this.satisfaction + 15);
+                    this.customersServed++;
+                    
+                    engine.showFloatingText(`+${points}`, currentCustomer.mesh.position, '#4CAF50');
+                    if(this.combo > 1) {
+                        engine.showFloatingText(`Combo x${this.combo}!`, new THREE.Vector3(0, 4, 0), '#FF9800');
+                        audio.sfx.combo(Math.min(this.combo, 10));
+                    }
+                    
+                    // Happy Animation
+                    currentCustomer.mesh.position.y += 0.5;
+                    setTimeout(()=> {if(currentCustomer) currentCustomer.mesh.position.y -= 0.5;}, 200);
+
+                } else {
+                    // Wrong
+                    audio.sfx.wrong();
+                    this.combo = 0;
+                    this.wrongOrders++;
+                    this.satisfaction -= 20;
+                    
+                    engine.showFloatingText('WRONG!', currentCustomer.mesh.position, '#F44336');
+                    
+                    // Angry Animation (shake)
+                    let shake = 0;
+                    const shakeInt = setInterval(() => {
+                        if(currentCustomer) currentCustomer.mesh.position.x += (Math.random()-0.5)*0.2;
+                        if(++shake > 10) { clearInterval(shakeInt); if(currentCustomer) currentCustomer.mesh.position.x = 0; }
+                    }, 20);
+                }
+                
+                // Make customer leave
+                currentCustomer.state = 'leaving';
+                if(currentCustomer.bubbleDOM) {
+                    currentCustomer.bubbleDOM.remove();
+                    currentCustomer.bubbleDOM = null;
+                }
+                
+                // Immediately spawn next if empty queue
+                if(customers.list.length === 1) customers.spawnTimer = 500;
+            },
+            
+            triggerLunchRush: function() {
+                this.lunchRush = true;
+                audio.playBGM('rush');
+                audio.sfx.rush();
+                
+                const alert = document.getElementById('lunch-rush-alert');
+                alert.style.opacity = 1;
+                alert.style.transform = 'translate(-50%, -50%) scale(1.2)';
+                setTimeout(() => {
+                    alert.style.opacity = 0;
+                    alert.style.transform = 'translate(-50%, -50%) scale(1)';
+                }, 2000);
+                
+                // Lighting change for dramatic effect
+                engine.scene.background = new THREE.Color(0xFF8C00); // Orange sky
+                engine.scene.fog.color.setHex(0xFF8C00);
+            },
+            
+            end: function(failed = false) {
+                this.state = 'RESULTS';
+                audio.stopBGM();
+                
+                // Reset lighting
+                engine.scene.background = new THREE.Color(0x87CEEB);
+                engine.scene.fog.color.setHex(0x87CEEB);
+                
+                document.getElementById('hud').classList.add('hidden');
+                
+                // Calculate final score
+                let finalScore = this.score;
+                if(!failed) {
+                    finalScore += Math.floor(this.satisfaction * 10); // Sat bonus
+                    audio.sfx.win();
+                } else {
+                    audio.sfx.lose();
+                }
+                
+                // Check high score
+                const prevHigh = storage.getHighScore(this.difficulty);
+                const isNewHigh = finalScore > prevHigh;
+                if(isNewHigh) {
+                    storage.setHighScore(this.difficulty, finalScore);
+                }
+                
+                ui.showResults(failed, finalScore, isNewHigh);
+            }
+        };
+
+        // --- UI MANAGER ---
+        const ui = {
+            hideAllScreens: function() {
+                document.querySelectorAll('.screen').forEach(el => el.classList.add('hidden'));
+            },
+            showMainMenu: function() {
+                this.hideAllScreens();
+                storage.checkUnlocks();
+                document.getElementById('main-menu').classList.remove('hidden');
+            },
+            showDifficultySelect: function() {
+                this.hideAllScreens();
+                storage.checkUnlocks();
+                document.getElementById('difficulty-screen').classList.remove('hidden');
+            },
+            showHowToPlay: function() {
+                this.hideAllScreens();
+                document.getElementById('how-to-screen').classList.remove('hidden');
+            },
+            
+            setupHUD: function() {
+                const container = document.getElementById('food-stations-ui');
+                container.innerHTML = '';
+                
+                // Create buttons only for available items
+                game.config.items.forEach((id, index) => {
+                    const item = Object.values(FOOD_TYPES).find(f => f.id === id);
+                    const btn = document.createElement('div');
+                    btn.className = 'station-btn';
+                    btn.innerHTML = item.icon;
+                    btn.style.borderColor = `#${item.color.toString(16).padStart(6,'0')}`;
+                    
+                    // Touch/Click to grab
+                    btn.addEventListener('pointerdown', (e) => {
+                        e.preventDefault();
+                        player.grabFood(id);
+                        btn.classList.add('active');
+                        setTimeout(()=>btn.classList.remove('active'), 100);
+                    });
+                    
+                    // Add PC shortcut text
+                    const keyHint = document.createElement('span');
+                    keyHint.style.position = 'absolute';
+                    keyHint.style.bottom = '-15px';
+                    keyHint.style.fontSize = '0.8rem';
+                    keyHint.style.color = 'white';
+                    keyHint.style.textShadow = '1px 1px 0 black';
+                    keyHint.innerText = `[${index+1}]`;
+                    btn.appendChild(keyHint);
+                    
+                    container.appendChild(btn);
+                });
+            },
+            
+            updateHUD: function() {
+                // Time
+                const timeEl = document.getElementById('timer');
+                timeEl.innerText = Math.ceil(game.time);
+                if(game.time <= 10) timeEl.classList.add('timer-danger');
+                else timeEl.classList.remove('timer-danger');
+                
+                // Score
+                document.getElementById('score-val').innerText = game.score;
+                
+                // Combo
+                const comboContainer = document.getElementById('combo-container');
+                const comboVal = document.getElementById('combo-val');
+                if(game.combo > 1) {
+                    comboContainer.style.display = 'block';
+                    if(comboVal.innerText !== `x${game.combo}`) {
+                        comboVal.innerText = `x${game.combo}`;
+                        comboVal.classList.add('combo-pop');
+                        setTimeout(() => comboVal.classList.remove('combo-pop'), 200);
+                    }
+                } else {
+                    comboContainer.style.display = 'none';
+                }
+                
+                // Satisfaction
+                const satBar = document.getElementById('satisfaction-bar');
+                satBar.style.width = `${game.satisfaction}%`;
+                if(game.satisfaction > 60) satBar.style.background = 'linear-gradient(90deg, #4CAF50, #8BC34A)';
+                else if(game.satisfaction > 30) satBar.style.background = 'linear-gradient(90deg, #FF9800, #FFC107)';
+                else satBar.style.background = 'linear-gradient(90deg, #F44336, #E53935)';
+            },
+            
+            updateOrderDisplay: function() {
+                // Next order preview (only in higher difficulties or lunch rush maybe? Let's keep it simple: show next if exists)
+                const nextIcon = document.getElementById('next-order-icon');
+                
+                if(customers.list.length > 1) {
+                    const nextItem = Object.values(FOOD_TYPES).find(f => f.id === customers.list[1].order);
+                    nextIcon.innerText = nextItem.icon;
+                } else {
+                    nextIcon.innerText = '...';
+                }
+            },
+            
+            showResults: function(failed, score, newHigh) {
+                this.hideAllScreens();
+                const res = document.getElementById('results-screen');
+                res.classList.remove('hidden');
+                
+                const title = document.getElementById('result-title');
+                title.innerText = failed ? "SHIFT FAILED!" : "SHIFT COMPLETE!";
+                title.style.color = failed ? "#F44336" : "white";
+                
+                // Animate numbers counting up (simplified)
+                document.getElementById('res-customers').innerText = game.customersServed;
+                document.getElementById('res-combo').innerText = game.maxCombo;
+                document.getElementById('res-wrong').innerText = game.wrongOrders;
+                document.getElementById('res-sat').innerText = Math.floor(game.satisfaction) + "%";
+                document.getElementById('res-score').innerText = score;
+                
+                document.getElementById('new-record-msg').style.display = newHigh ? 'block' : 'none';
+            }
+        };
+
+        // --- INITIALIZATION ---
+        window.onload = () => {
+            engine.init();
+            player.init();
+            input.init();
+            audio.init();
+            ui.showMainMenu();
+            
+            // Start render loop even in menu for background
+            const idleRender = () => {
+                if(game.state === 'MENU') {
+                    engine.render();
+                }
+                requestAnimationFrame(idleRender);
+            };
+            idleRender();
+        };
+
     </script>
 </body>
 </html>
