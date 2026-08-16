@@ -1,0 +1,1191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pac-Man 3D - Boss Rush Edition</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background: #000411; 
+            font-family: 'Courier New', monospace; 
+            touch-action: none; 
+            user-select: none; 
+            -webkit-user-select: none; 
+        }
+        #ui { 
+            position: absolute; 
+            top: 10px; 
+            width: 100%; 
+            text-align: center; 
+            color: #00f2ff; 
+            font-size: 13px; 
+            pointer-events: none; 
+            z-index: 10; 
+            font-weight: bold; 
+            text-shadow: 0 0 5px rgba(0, 242, 255, 0.8);
+            line-height: 1.5;
+        }
+        #boss-hp-container {
+            width: 320px;
+            height: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #ff0055;
+            border-radius: 10px;
+            margin: 6px auto;
+            overflow: hidden;
+            box-shadow: 0 0 12px rgba(255, 0, 85, 0.6);
+            position: relative;
+        }
+        #bossHpBar {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, #ff0055, #ff5500);
+            transition: width 0.2s ease-out;
+        }
+        #bossHpText {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+            font-size: 12px;
+            text-shadow: 1px 1px 3px #000;
+            letter-spacing: 1px;
+        }
+        #boss-ability-text {
+            color: #ff2266;
+            font-size: 14px;
+            height: 18px;
+            text-shadow: 0 0 8px #ff0055;
+            text-transform: uppercase;
+        }
+        #minimap { 
+            position: absolute; 
+            top: 10px; 
+            right: 10px; 
+            width: 120px; 
+            height: 120px; 
+            background: rgba(0,0,0,0.8); 
+            border: 2px solid #00f2ff; 
+            border-radius: 8px;
+            z-index: 20; 
+            box-shadow: 0 0 10px rgba(0, 242, 255, 0.3);
+        }
+        #joystick-container { 
+            position: absolute; 
+            bottom: 30px; 
+            left: 30px; 
+            width: 110px; 
+            height: 110px; 
+            background: rgba(0, 242, 255, 0.15); 
+            border: 2px solid #00f2ff; 
+            border-radius: 50%; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            z-index: 30; 
+        }
+        #joystick-knob { 
+            width: 45px; 
+            height: 45px; 
+            background: #00f2ff; 
+            border-radius: 50%; 
+            box-shadow: 0 0 12px #00f2ff; 
+        }
+        #controls-right { 
+            position: absolute; 
+            bottom: 30px; 
+            right: 30px; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 12px; 
+            align-items: flex-end; 
+            z-index: 30; 
+        }
+        .btn { 
+            width: 140px; 
+            height: 60px; 
+            background: rgba(0, 255, 0, 0.25); 
+            border: 2px solid #00ff00; 
+            border-radius: 12px; 
+            color: #00ff00; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-weight: bold; 
+            font-size: 16px; 
+            box-shadow: 0 0 12px rgba(0,255,0,0.4);
+            -webkit-tap-highlight-color: transparent; 
+            cursor: pointer;
+        }
+        #victory, #gameover, #level-banner { 
+            display: none; 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            z-index: 100; 
+            text-align: center; 
+        }
+        #victory { background: rgba(0,0,0,0.92); color: #ffff00; }
+        #gameover { background: rgba(180,0,0,0.92); color: white; }
+        #level-banner { 
+            background: rgba(0, 0, 0, 0.85); 
+            color: #00f2ff; 
+            pointer-events: none;
+            transition: opacity 0.5s ease;
+        }
+        #level-banner h2 {
+            font-size: 38px;
+            margin: 0;
+            text-shadow: 0 0 15px #00f2ff;
+        }
+        #level-banner p {
+            font-size: 20px;
+            color: #ffffff;
+            margin-top: 8px;
+        }
+        .bar-container { 
+            display: none; 
+            width: 240px; 
+            height: 12px; 
+            border: 2px solid white; 
+            border-radius: 6px; 
+            margin: 6px auto; 
+            overflow: hidden; 
+            background: #000; 
+        }
+        #powerBar { width: 100%; height: 100%; background: #00ffff; transition: width 0.1s linear; }
+        .retry-btn { 
+            padding: 15px 35px; 
+            margin-top: 25px; 
+            font-weight: bold; 
+            cursor: pointer; 
+            border: none; 
+            border-radius: 8px;
+            font-size: 18px; 
+            box-shadow: 0 0 15px rgba(255,255,255,0.5);
+        }
+        #camera-hint { 
+            position: absolute; 
+            top: 50%; 
+            right: 15px; 
+            transform: translateY(-50%); 
+            color: rgba(255,255,255,0.4); 
+            font-size: 12px; 
+            pointer-events: none; 
+            text-align: center; 
+            background: rgba(0,0,0,0.4);
+            padding: 6px 10px;
+            border-radius: 10px;
+        }
+        #desktop-hint {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(0, 242, 255, 0.7);
+            font-size: 12px;
+            pointer-events: none;
+        }
+        #finisher-overlay {
+            display: none;
+            position: fixed;
+            top: 20%;
+            width: 100%;
+            text-align: center;
+            font-size: 42px;
+            font-weight: 900;
+            color: #fffb00;
+            text-shadow: 0 0 20px #ffea00, 0 0 40px #ff0055;
+            z-index: 80;
+            pointer-events: none;
+            animation: pulse 0.5s infinite alternate;
+        }
+        @keyframes pulse {
+            from { transform: scale(0.95); }
+            to { transform: scale(1.1); }
+        }
+    </style>
+</head>
+<body>
+    <div id="ui">
+        STAGE: <span id="level">1</span> / 4 | SCORE: <span id="score">0</span> | LIVES: <span id="lives">3</span> | TIME: <span id="time">0:00</span><br>
+        NEXT POWER PELLET IN: <span id="pelletTimer">30</span>s
+        <div id="boss-hp-container">
+            <div id="bossHpBar"></div>
+            <div id="bossHpText">BOSS HP: 0 / 0</div>
+        </div>
+        <div id="boss-ability-text"></div>
+        <div id="powerBarContainer" class="bar-container"><div id="powerBar"></div></div>
+    </div>
+    
+    <canvas id="minimap"></canvas>
+
+    <div id="finisher-overlay">FINAL IMPACT!</div>
+    
+    <div id="level-banner">
+        <h2 id="banner-title">STAGE 1</h2>
+        <p id="banner-subtitle">BLINKY THE FIERY TITAN ARRIVES!</p>
+    </div>
+
+    <div id="victory">
+        <h1>VICTORY!</h1>
+        <p>You have defeated all 4 Giant Ghost Bosses!</p>
+        <p>Final Score: <span id="finalScore">0</span></p>
+        <button class="retry-btn" style="background:#ffff00; color:#000;" onclick="location.reload()">PLAY AGAIN</button>
+    </div>
+    
+    <div id="gameover">
+        <h1>GAME OVER</h1>
+        <p id="go-reason"></p>
+        <button class="retry-btn" style="background:#ffffff; color:#cc0000;" onclick="location.reload()">RETRY</button>
+    </div>
+    
+    <div id="joystick-container"><div id="joystick-knob"></div></div>
+    <div id="camera-hint">↕ Drag here ↔<br>to rotate camera</div>
+    <div id="desktop-hint">Controls: WASD / Arrows (Move) | Space (Jump)</div>
+
+    <div id="controls-right">
+        <div id="btnJump" class="btn">JUMP</div>
+    </div>
+
+    <!-- Background Music Player -->
+    <audio id="bgm" src="bossfight incoming!.mp3" loop preload="auto"></audio>
+
+    <script type="importmap">
+        { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+
+        // --- GAME CONFIG & LEVEL SETTINGS (4 BOSSES) ---
+        const BOSS_CONFIGS = [
+            { 
+                level: 1,  
+                name: "BLINKY THE FIERY TITAN", 
+                color: 0xff0000, 
+                hp: 15,  
+                speed: 0.018, 
+                scale: 2.5,
+                abilities: ["Flame Dash", "Fireball Burst", "Rage Shockwave"]
+            },
+            { 
+                level: 2,  
+                name: "PINKY THE PHANTOM QUEEN",  
+                color: 0xff69b4, 
+                hp: 25,  
+                speed: 0.021, 
+                scale: 2.7,
+                abilities: ["Ambush Teleport", "Charm Beam", "Shadow Clones"]
+            },
+            { 
+                level: 3,  
+                name: "INKY THE FROST LORD",   
+                color: 0x00ffff, 
+                hp: 35,  
+                speed: 0.024, 
+                scale: 2.9,
+                abilities: ["Frost Laser", "Ice Spike Trap", "Spectral Barrier"]
+            },
+            { 
+                level: 4,  
+                name: "CLYDE THE APOCALYPSE TITAN",  
+                color: 0xffa500, 
+                hp: 50,  
+                speed: 0.027, 
+                scale: 3.2,
+                abilities: ["Meteor Strike", "Earthquake Tremor", "Mega Nova Blast"]
+            }
+        ];
+
+        // --- GAME STATE ---
+        let score = 0, lives = 3, currentLevel = 1, gameActive = true;
+        let powerUp = false, powerTimeLeft = 0;
+        let velocityY = 0, isJumping = false;
+        let walkTimer = 0;
+        let gameTime = 0;
+        let pelletSpawnCountdown = 30;
+
+        let bossHp = 0, bossMaxHp = 0;
+        let bossHitInvulnerable = false;
+        let bossAbilityTimer = 0;
+        let isBossShielded = false;
+        let pacmanSpeedMultiplier = 1.0;
+
+        // Cinematic Finisher State
+        let inFinisherCutscene = false;
+        let finisherTimer = 0;
+
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x02020a);
+        scene.fog = new THREE.FogExp2(0x02020a, 0.022);
+
+        const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+
+        const miniCanvas = document.getElementById('minimap');
+        const miniCtx = miniCanvas.getContext('2d');
+        miniCanvas.width = 120; miniCanvas.height = 120;
+
+        // BACKGROUND MUSIC MANAGEMENT
+        const bgm = document.getElementById('bgm');
+        let bgmStarted = false;
+        function startBgm() {
+            if(!bgmStarted) {
+                bgm.play().then(() => { bgmStarted = true; }).catch(() => {});
+            }
+        }
+        window.addEventListener('click', startBgm);
+        window.addEventListener('touchstart', startBgm);
+        window.addEventListener('keydown', startBgm);
+
+        // SOUND EFFECTS (Web Audio API Synthesizers)
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playSfx(f, d=0.1, t='sine') {
+            try {
+                if(audioCtx.state === 'suspended') audioCtx.resume();
+                const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+                o.type = t; o.frequency.setValueAtTime(f, audioCtx.currentTime);
+                g.gain.setValueAtTime(0.06, audioCtx.currentTime);
+                g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + d);
+                o.connect(g); g.connect(audioCtx.destination);
+                o.start(); o.stop(audioCtx.currentTime + d);
+            } catch(e){}
+        }
+
+        // =========================================================================
+        // --- 3D PAC-MAN MODEL (MODEL FROM PAC-MAN 3D 1st.html) ---
+        // =========================================================================
+        function createClassicPacman() {
+            const pacmanGroup = new THREE.Group();
+            const pmMaterial = new THREE.MeshPhongMaterial({ color: 0xffff00, side: THREE.DoubleSide, shininess: 80 });
+            
+            // Mitad superior
+            const topGeo = new THREE.SphereGeometry(0.8, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2);
+            const topHalf = new THREE.Mesh(topGeo, pmMaterial);
+            topHalf.castShadow = true;
+            
+            // Mitad inferior
+            const bottomGeo = new THREE.SphereGeometry(0.8, 32, 16, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2);
+            const bottomHalf = new THREE.Mesh(bottomGeo, pmMaterial);
+            bottomHalf.castShadow = true;
+
+            // Ojos negros (Estilo CE)
+            const eyeGeo = new THREE.SphereGeometry(0.12, 16, 16);
+            const eyeMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+            const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
+            rightEye.position.set(0.35, 0.4, 0.6);
+            const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
+            leftEye.position.set(-0.35, 0.4, 0.6);
+            
+            topHalf.add(rightEye);
+            topHalf.add(leftEye);
+            pacmanGroup.add(topHalf);
+            pacmanGroup.add(bottomHalf);
+
+            pacmanGroup.userData = { topHalf, bottomHalf, pmMaterial };
+            return pacmanGroup;
+        }
+
+        const pacman = createClassicPacman();
+        pacman.position.set(0, 0.8, -12);
+        scene.add(pacman);
+
+        // --- MAP & ARENA (OUTER BORDER WALLS ONLY) ---
+        const map = [
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+        ];
+
+        // Floor
+        const floorGeo = new THREE.PlaneGeometry(100, 100);
+        const floorMat = new THREE.MeshPhongMaterial({ color: 0x050814, specular: 0x111122 });
+        const floor = new THREE.Mesh(floorGeo, floorMat);
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.y = 0;
+        floor.receiveShadow = true;
+        scene.add(floor);
+
+        // Floor Grid
+        const gridHelper = new THREE.GridHelper(100, 50, 0x00f2ff, 0x002244);
+        gridHelper.position.y = 0.01;
+        scene.add(gridHelper);
+
+        const walls = [];
+        const wallMat = new THREE.MeshPhongMaterial({ color: 0x0044ff, shininess: 90, specular: 0x00aaff });
+        
+        map.forEach((row, z) => {
+            row.forEach((cell, x) => {
+                const pos = [x * 4 - 30, 2, z * 4 - 16];
+                if (cell === 1) {
+                    const wall = new THREE.Mesh(new THREE.BoxGeometry(4, 4, 4), wallMat);
+                    wall.position.set(...pos); 
+                    wall.castShadow = true;
+                    wall.receiveShadow = true;
+                    scene.add(wall);
+                    walls.push(new THREE.Box3().setFromObject(wall));
+                }
+            });
+        });
+
+        // LIGHTING
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(20, 40, 20);
+        dirLight.castShadow = true;
+        scene.add(dirLight);
+
+        const pacmanLight = new THREE.PointLight(0xffdd00, 3, 15);
+        scene.add(pacmanLight);
+
+        // --- GIANT GHOST BOSS CREATION ---
+        function createGiantGhost(color) {
+            const group = new THREE.Group();
+            
+            const bodyGeo = new THREE.CapsuleGeometry(0.55, 0.6, 16, 16);
+            const bodyMat = new THREE.MeshPhongMaterial({ color, shininess: 60 });
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.position.y = 0.65;
+            body.castShadow = true;
+            group.add(body);
+
+            const eyeGeo = new THREE.SphereGeometry(0.14, 12, 12);
+            const pupilGeo = new THREE.SphereGeometry(0.07, 12, 12);
+            const eyeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            const pupilMat = new THREE.MeshBasicMaterial({ color: 0x0000ff });
+
+            const lE = new THREE.Mesh(eyeGeo, eyeMat); lE.position.set(0.22, 0.85, 0.42);
+            const lP = new THREE.Mesh(pupilGeo, pupilMat); lP.position.set(0.22, 0.85, 0.52);
+            const rE = new THREE.Mesh(eyeGeo, eyeMat); rE.position.set(-0.22, 0.85, 0.42);
+            const rP = new THREE.Mesh(pupilGeo, pupilMat); rP.position.set(-0.22, 0.85, 0.52);
+
+            group.add(lE, lP, rE, rP);
+            group.baseColor = color; 
+            group.bodyMesh = body;
+
+            // Shield visual mesh
+            const shieldGeo = new THREE.SphereGeometry(0.9, 16, 16);
+            const shieldMat = new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.4, wireframe: true });
+            const shieldMesh = new THREE.Mesh(shieldGeo, shieldMat);
+            shieldMesh.position.y = 0.65;
+            shieldMesh.visible = false;
+            group.add(shieldMesh);
+            group.shieldMesh = shieldMesh;
+
+            return group;
+        }
+
+        let bossGroup = createGiantGhost(BOSS_CONFIGS[0].color);
+        scene.add(bossGroup);
+
+        // PROJECTILES & HAZARDS ARRAY
+        const bossProjectiles = [];
+        const shadowClones = [];
+        const explosionParticles = [];
+
+        // --- POWER PELLETS MANAGEMENT ---
+        const powerPellets = [];
+        
+        function spawnPowerPellet(x, z) {
+            const dotGeo = new THREE.SphereGeometry(0.5, 16, 16);
+            const dotMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+            const pellet = new THREE.Mesh(dotGeo, dotMat);
+            pellet.position.set(x, 0.8, z);
+            scene.add(pellet);
+            powerPellets.push(pellet);
+        }
+
+        function clearAllPowerPellets() {
+            powerPellets.forEach(p => scene.remove(p));
+            powerPellets.length = 0;
+        }
+
+        function spawnPelletBatch() {
+            const spots = [
+                [-22, -10], [22, -10], [-22, 10], [22, 10],
+                [0, -10], [0, 10], [-15, 0], [15, 0]
+            ];
+            const shuffled = spots.sort(() => 0.5 - Math.random());
+            const count = Math.min(4, shuffled.length);
+            for(let i = 0; i < count; i++) {
+                spawnPowerPellet(shuffled[i][0], shuffled[i][1]);
+            }
+            playSfx(750, 0.2, 'sine');
+        }
+
+        // LEVEL SETUP
+        function loadLevel(levelNum) {
+            currentLevel = levelNum;
+            const config = BOSS_CONFIGS[levelNum - 1];
+            
+            document.getElementById('level').innerText = levelNum;
+            
+            // Reset Boss Stats
+            bossMaxHp = config.hp;
+            bossHp = config.hp;
+            updateBossHpUI();
+
+            // Set Boss appearance & scale
+            bossGroup.scale.set(config.scale, config.scale, config.scale);
+            bossGroup.bodyMesh.material.color.set(config.color);
+            bossGroup.baseColor = config.color;
+            bossGroup.position.set(0, 0.5, 5);
+            bossGroup.shieldMesh.visible = false;
+            isBossShielded = false;
+
+            // Clear hazards & clones
+            clearBossHazards();
+
+            // Reset Pacman Pos & States
+            pacman.position.set(0, 0.8, -12);
+            pacmanSpeedMultiplier = 1.0;
+
+            // Clear & Spawn Power Pellets
+            clearAllPowerPellets();
+            spawnPelletBatch();
+            pelletSpawnCountdown = 30;
+
+            // Turn off active powerups
+            powerUp = false;
+            document.getElementById('powerBarContainer').style.display = 'none';
+
+            // Display Level Banner
+            showLevelBanner(`STAGE ${levelNum}`, config.name);
+        }
+
+        function clearBossHazards() {
+            bossProjectiles.forEach(p => scene.remove(p.mesh));
+            bossProjectiles.length = 0;
+            shadowClones.forEach(c => scene.remove(c));
+            shadowClones.length = 0;
+        }
+
+        function showLevelBanner(title, subtitle) {
+            const banner = document.getElementById('level-banner');
+            document.getElementById('banner-title').innerText = title;
+            document.getElementById('banner-subtitle').innerText = subtitle;
+            banner.style.display = 'flex';
+            banner.style.opacity = '1';
+            setTimeout(() => {
+                banner.style.opacity = '0';
+                setTimeout(() => { banner.style.display = 'none'; }, 500);
+            }, 2000);
+        }
+
+        function updateBossHpUI() {
+            const pct = Math.max(0, (bossHp / bossMaxHp) * 100);
+            document.getElementById('bossHpBar').style.width = pct + '%';
+            document.getElementById('bossHpText').innerText = `BOSS HP: ${bossHp} / ${bossMaxHp}`;
+        }
+
+        function displayAbilityText(abilityName) {
+            const el = document.getElementById('boss-ability-text');
+            el.innerText = `BOSS USED: ${abilityName}!`;
+            setTimeout(() => {
+                if(el.innerText.includes(abilityName)) el.innerText = '';
+            }, 2500);
+        }
+
+        // TIMER & GAME TICK
+        const timerInterval = setInterval(() => {
+            if(!gameActive || inFinisherCutscene) return;
+            gameTime++;
+            const m = Math.floor(gameTime / 60), s = (gameTime % 60).toString().padStart(2, '0');
+            document.getElementById('time').innerText = `${m}:${s}`;
+
+            // Pellet Countdown
+            pelletSpawnCountdown--;
+            if(pelletSpawnCountdown <= 0) {
+                spawnPelletBatch();
+                pelletSpawnCountdown = 30;
+            }
+            document.getElementById('pelletTimer').innerText = pelletSpawnCountdown;
+        }, 1000);
+
+        function gameOver(reason) {
+            gameActive = false;
+            document.getElementById('gameover').style.display = 'flex';
+            document.getElementById('go-reason').innerText = reason;
+            playSfx(150, 0.8, 'sawtooth');
+        }
+
+        function triggerVictory() {
+            gameActive = false;
+            document.getElementById('victory').style.display = 'flex';
+            document.getElementById('finalScore').innerText = score;
+            playSfx(880, 0.6, 'sine');
+        }
+
+        // JUMP ACTION
+        function triggerJump() {
+            if(!isJumping && gameActive && !inFinisherCutscene) { 
+                velocityY = 0.22; 
+                isJumping = true; 
+                playSfx(350, 0.2, 'triangle'); 
+            }
+        }
+
+        document.getElementById('btnJump').addEventListener('touchstart', (e) => { e.preventDefault(); triggerJump(); });
+        document.getElementById('btnJump').addEventListener('click', () => triggerJump());
+
+        // KEYBOARD CONTROLS
+        const keys = {};
+        window.addEventListener('keydown', (e) => {
+            keys[e.key.toLowerCase()] = true;
+            if(e.code === 'Space') { triggerJump(); e.preventDefault(); }
+        });
+        window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
+
+        // TOUCH CONTROLS (JOYSTICK & CAMERA)
+        let moveF = 0, moveS = 0;
+        let camAngleY = Math.PI; 
+        let camAngleX = 0.45;     
+        let camRadius = 10.5;       
+
+        let touchStartX = 0, touchStartY = 0, isDraggingCamera = false;
+
+        window.addEventListener('touchstart', (e) => {
+            for(let i=0; i<e.changedTouches.length; i++) {
+                const t = e.changedTouches[i];
+                if (t.clientX > window.innerWidth / 2 && !e.target.closest('.btn')) {
+                    isDraggingCamera = true;
+                    touchStartX = t.clientX;
+                    touchStartY = t.clientY;
+                }
+            }
+        });
+
+        window.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            for(let i=0; i<e.changedTouches.length; i++) {
+                const t = e.changedTouches[i];
+                if (t.clientX < window.innerWidth / 2) {
+                    const r = document.getElementById('joystick-container').getBoundingClientRect();
+                    let dx = t.clientX - (r.left + 55), dy = t.clientY - (r.top + 55);
+                    const d = Math.sqrt(dx*dx+dy*dy) || 1;
+                    moveS = (dx/d) * 0.15; 
+                    moveF = (dy/d) * 0.15;
+                    document.getElementById('joystick-knob').style.transform = `translate(${(dx/d)*Math.min(d,45)/2}px, ${(dy/d)*Math.min(d,45)/2}px)`;
+                } else if (isDraggingCamera) {
+                    let deltaX = t.clientX - touchStartX;
+                    let deltaY = t.clientY - touchStartY;
+                    camAngleY -= deltaX * 0.008;
+                    camAngleX -= deltaY * 0.008;
+                    camAngleX = Math.max(0.15, Math.min(Math.PI / 2 - 0.1, camAngleX));
+                    touchStartX = t.clientX;
+                    touchStartY = t.clientY;
+                }
+            }
+        }, { passive: false });
+
+        window.addEventListener('touchend', (e) => { 
+            for(let i=0; i<e.changedTouches.length; i++) {
+                const t = e.changedTouches[i];
+                if(t.clientX < window.innerWidth/2) {
+                    moveF = moveS = 0; 
+                    document.getElementById('joystick-knob').style.transform = 'translate(0,0)'; 
+                } else {
+                    isDraggingCamera = false;
+                }
+            }
+        });
+
+        // WALL COLLISION CHECK
+        function checkCol(p) { 
+            const playerBox = new THREE.Box3().setFromCenterAndSize(p, new THREE.Vector3(1.5, 1.5, 1.5));
+            return walls.some(w => playerBox.intersectsBox(w)); 
+        }
+
+        // --- BOSS ABILITY EXECUTOR ---
+        function triggerBossAbility() {
+            if(!gameActive || powerUp || inFinisherCutscene) return;
+            const config = BOSS_CONFIGS[currentLevel - 1];
+            const ability = config.abilities[Math.floor(Math.random() * config.abilities.length)];
+            displayAbilityText(ability);
+
+            if (ability === "Flame Dash") {
+                playSfx(220, 0.4, 'sawtooth');
+                const dir = pacman.position.clone().sub(bossGroup.position).normalize();
+                bossGroup.position.add(dir.multiplyScalar(4));
+            } 
+            else if (ability === "Fireball Burst") {
+                playSfx(500, 0.3, 'square');
+                for(let i = -1; i <= 1; i++) {
+                    const fireball = new THREE.Mesh(
+                        new THREE.SphereGeometry(0.6, 12, 12),
+                        new THREE.MeshBasicMaterial({ color: 0xff4400 })
+                    );
+                    fireball.position.copy(bossGroup.position);
+                    fireball.position.y = 1.0;
+                    
+                    const angle = Math.atan2(pacman.position.x - bossGroup.position.x, pacman.position.z - bossGroup.position.z) + (i * 0.3);
+                    const vel = new THREE.Vector3(Math.sin(angle), 0, Math.cos(angle)).multiplyScalar(0.22);
+                    scene.add(fireball);
+                    bossProjectiles.push({ mesh: fireball, vel, radius: 0.6, type: 'fireball' });
+                }
+            }
+            else if (ability === "Rage Shockwave") {
+                playSfx(120, 0.6, 'triangle');
+                const ringGeo = new THREE.RingGeometry(0.5, 1.2, 32);
+                const ringMat = new THREE.MeshBasicMaterial({ color: 0xff0000, side: THREE.DoubleSide });
+                const ring = new THREE.Mesh(ringGeo, ringMat);
+                ring.rotation.x = -Math.PI / 2;
+                ring.position.copy(bossGroup.position);
+                ring.position.y = 0.1;
+                scene.add(ring);
+                bossProjectiles.push({ mesh: ring, radius: 1.2, expand: 0.25, type: 'shockwave', maxScale: 18 });
+            }
+            else if (ability === "Ambush Teleport") {
+                playSfx(650, 0.3, 'sine');
+                bossGroup.position.copy(pacman.position);
+                bossGroup.position.z += (Math.random() > 0.5 ? 4 : -4);
+                bossGroup.position.x += (Math.random() > 0.5 ? 4 : -4);
+            }
+            else if (ability === "Charm Beam") {
+                playSfx(700, 0.4, 'sine');
+                pacmanSpeedMultiplier = 0.4;
+                setTimeout(() => { pacmanSpeedMultiplier = 1.0; }, 3000);
+            }
+            else if (ability === "Shadow Clones") {
+                playSfx(300, 0.4, 'square');
+                for(let i=0; i<2; i++) {
+                    const clone = createGiantGhost(0xffb8ff);
+                    clone.scale.copy(bossGroup.scale).multiplyScalar(0.7);
+                    clone.position.copy(bossGroup.position);
+                    clone.position.x += (i === 0 ? 5 : -5);
+                    scene.add(clone);
+                    shadowClones.push(clone);
+                }
+                setTimeout(() => {
+                    shadowClones.forEach(c => scene.remove(c));
+                    shadowClones.length = 0;
+                }, 5000);
+            }
+            else if (ability === "Frost Laser") {
+                playSfx(850, 0.3, 'sine');
+                const laserGeo = new THREE.CylinderGeometry(0.2, 0.2, 20);
+                const laserMat = new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.8 });
+                const laser = new THREE.Mesh(laserGeo, laserMat);
+                laser.rotation.x = Math.PI / 2;
+                laser.position.copy(bossGroup.position);
+                laser.lookAt(pacman.position);
+                scene.add(laser);
+                setTimeout(() => scene.remove(laser), 600);
+
+                if(pacman.position.distanceTo(bossGroup.position) < 15) {
+                    pacmanSpeedMultiplier = 0.2;
+                    setTimeout(() => { pacmanSpeedMultiplier = 1.0; }, 2000);
+                }
+            }
+            else if (ability === "Ice Spike Trap") {
+                playSfx(200, 0.5, 'sawtooth');
+                const spike = new THREE.Mesh(
+                    new THREE.ConeGeometry(1.2, 3, 8),
+                    new THREE.MeshBasicMaterial({ color: 0x88ffff })
+                );
+                spike.position.copy(pacman.position);
+                spike.position.y = 1.5;
+                scene.add(spike);
+                bossProjectiles.push({ mesh: spike, duration: 120, type: 'spike', pos: spike.position.clone() });
+            }
+            else if (ability === "Spectral Barrier") {
+                playSfx(900, 0.4, 'sine');
+                isBossShielded = true;
+                bossGroup.shieldMesh.visible = true;
+                setTimeout(() => {
+                    isBossShielded = false;
+                    bossGroup.shieldMesh.visible = false;
+                }, 4000);
+            }
+            else if (ability === "Meteor Strike") {
+                playSfx(100, 0.8, 'sawtooth');
+                const meteor = new THREE.Mesh(
+                    new THREE.SphereGeometry(1.5, 12, 12),
+                    new THREE.MeshPhongMaterial({ color: 0xff3300 })
+                );
+                meteor.position.copy(pacman.position);
+                meteor.position.y = 20;
+                scene.add(meteor);
+                bossProjectiles.push({ mesh: meteor, vel: new THREE.Vector3(0, -0.4, 0), type: 'meteor' });
+            }
+            else if (ability === "Earthquake Tremor") {
+                playSfx(150, 0.8, 'triangle');
+                if(!isJumping) {
+                    lives--;
+                    document.getElementById('lives').innerText = lives;
+                    playSfx(180, 0.4, 'sawtooth');
+                    if(lives <= 0) gameOver("OUT OF LIVES!");
+                }
+            }
+            else if (ability === "Mega Nova Blast") {
+                playSfx(250, 0.8, 'square');
+                const nova = new THREE.Mesh(
+                    new THREE.SphereGeometry(1, 16, 16),
+                    new THREE.MeshBasicMaterial({ color: 0xff6600, wireframe: true })
+                );
+                nova.position.copy(bossGroup.position);
+                scene.add(nova);
+                bossProjectiles.push({ mesh: nova, radius: 1.0, expand: 0.35, maxScale: 25, type: 'nova' });
+            }
+        }
+
+        // EPIC FINISHER ANIMATION SEQUENCE
+        function startFinisherSequence() {
+            inFinisherCutscene = true;
+            finisherTimer = 0;
+            document.getElementById('finisher-overlay').style.display = 'block';
+            playSfx(1200, 1.2, 'sawtooth');
+
+            // Burst particle explosion around boss
+            for(let i = 0; i < 40; i++) {
+                const p = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.3, 0.3, 0.3),
+                    new THREE.MeshBasicMaterial({ color: Math.random() > 0.5 ? 0xffff00 : 0xff0055 })
+                );
+                p.position.copy(bossGroup.position);
+                p.vel = new THREE.Vector3(
+                    (Math.random() - 0.5) * 0.4,
+                    Math.random() * 0.4,
+                    (Math.random() - 0.5) * 0.4
+                );
+                scene.add(p);
+                explosionParticles.push(p);
+            }
+        }
+
+        function updateFinisherSequence() {
+            finisherTimer += 0.02;
+
+            // Dramatic Slow-Motion Camera Pan around Pac-Man and Boss
+            const midPoint = pacman.position.clone().add(bossGroup.position).multiplyScalar(0.5);
+            camera.position.x = midPoint.x + Math.sin(finisherTimer * 3) * 6;
+            camera.position.y = midPoint.y + 3 + Math.cos(finisherTimer * 2) * 2;
+            camera.position.z = midPoint.z + Math.cos(finisherTimer * 3) * 6;
+            camera.lookAt(midPoint);
+
+            // Pacman glows & mouth opens ultra wide
+            pacman.userData.pmMaterial.color.setHex(0xffea00);
+            pacman.userData.topHalf.rotation.x = -0.7;
+            pacman.userData.bottomHalf.rotation.x = 0.7;
+
+            // Boss shrinks and disintegrates
+            bossGroup.scale.multiplyScalar(0.96);
+            bossGroup.rotation.y += 0.2;
+
+            // Particles animate outward
+            explosionParticles.forEach(p => {
+                p.position.add(p.vel);
+                p.scale.multiplyScalar(0.95);
+            });
+
+            if (finisherTimer > 2.5) {
+                // End Finisher Cutscene
+                inFinisherCutscene = false;
+                document.getElementById('finisher-overlay').style.display = 'none';
+                pacman.userData.pmMaterial.color.setHex(0xffff00);
+
+                // Clean up finisher particles
+                explosionParticles.forEach(p => scene.remove(p));
+                explosionParticles.length = 0;
+
+                score += 1000 * currentLevel;
+                document.getElementById('score').innerText = score;
+
+                if(currentLevel < 4) {
+                    loadLevel(currentLevel + 1);
+                } else {
+                    triggerVictory();
+                }
+            }
+        }
+
+        // INITIAL LEVEL LOAD
+        loadLevel(1);
+
+        // --- MAIN ANIMATION & GAME LOOP ---
+        function animate() {
+            if(!gameActive) return;
+            requestAnimationFrame(animate);
+
+            if (inFinisherCutscene) {
+                updateFinisherSequence();
+                renderer.render(scene, camera);
+                return;
+            }
+
+            // WASD Keyboard Inputs
+            let kF = 0, kS = 0;
+            if(keys['w'] || keys['arrowup']) kF = -0.15;
+            if(keys['s'] || keys['arrowdown']) kF = 0.15;
+            if(keys['a'] || keys['arrowleft']) kS = -0.15;
+            if(keys['d'] || keys['arrowright']) kS = 0.15;
+
+            const effectiveMoveF = (moveF !== 0 ? moveF : kF) * pacmanSpeedMultiplier;
+            const effectiveMoveS = (moveS !== 0 ? moveS : kS) * pacmanSpeedMultiplier;
+            const isMoving = (effectiveMoveF !== 0 || effectiveMoveS !== 0);
+
+            // Gravity & Jumping Logic
+            if(isJumping) {
+                pacman.position.y += velocityY; 
+                velocityY -= 0.012;
+                if(pacman.position.y <= 0.8) { 
+                    pacman.position.y = 0.8; 
+                    isJumping = false; 
+                }
+            }
+
+            // Movement vector based on camera direction
+            const moveVec = new THREE.Vector3(effectiveMoveS, 0, effectiveMoveF).applyAxisAngle(new THREE.Vector3(0,1,0), camAngleY);
+
+            if(isMoving) {
+                const npX = pacman.position.clone(); npX.x += moveVec.x; if(!checkCol(npX)) pacman.position.x = npX.x;
+                const npZ = pacman.position.clone(); npZ.z += moveVec.z; if(!checkCol(npZ)) pacman.position.z = npZ.z;
+                
+                // Orient Pac-Man toward movement direction
+                const targetAngle = Math.atan2(moveVec.x, moveVec.z);
+                pacman.rotation.y = targetAngle;
+
+                // Classic Mouth Chomp Animation
+                walkTimer += 0.25;
+                const mouthAngle = (Math.sin(walkTimer * 1.5) + 1) * 0.3;
+                pacman.userData.topHalf.rotation.x = -mouthAngle;
+                pacman.userData.bottomHalf.rotation.x = mouthAngle;
+            } else {
+                // Idle Pose
+                pacman.userData.topHalf.rotation.x = 0;
+                pacman.userData.bottomHalf.rotation.x = 0;
+            }
+
+            // Camera Tracking
+            camera.position.x = pacman.position.x + camRadius * Math.sin(camAngleY) * Math.cos(camAngleX);
+            camera.position.y = pacman.position.y + 0.8 + camRadius * Math.sin(camAngleX);
+            camera.position.z = pacman.position.z + camRadius * Math.cos(camAngleY) * Math.cos(camAngleX);
+            camera.lookAt(pacman.position.x, pacman.position.y + 0.8, pacman.position.z);
+            
+            pacmanLight.position.set(pacman.position.x, pacman.position.y + 2, pacman.position.z);
+
+            // Power-Up State Management
+            if(powerUp) {
+                powerTimeLeft -= 16;
+                document.getElementById('powerBar').style.width = (powerTimeLeft / 8000 * 100) + '%';
+                if(powerTimeLeft <= 0) { 
+                    powerUp = false; 
+                    document.getElementById('powerBarContainer').style.display = 'none'; 
+                    bossGroup.bodyMesh.material.color.set(bossGroup.baseColor); 
+                }
+            }
+
+            // BOSS AI & MOVEMENTS
+            const config = BOSS_CONFIGS[currentLevel - 1];
+            const bossSpeed = powerUp ? -config.speed * 0.8 : config.speed;
+            
+            let dx = (pacman.position.x - bossGroup.position.x) * bossSpeed;
+            let dz = (pacman.position.z - bossGroup.position.z) * bossSpeed;
+            
+            const ngX = bossGroup.position.clone(); ngX.x += dx; if(!checkCol(ngX)) bossGroup.position.x = ngX.x;
+            const ngZ = bossGroup.position.clone(); ngZ.z += dz; if(!checkCol(ngZ)) bossGroup.position.z = ngZ.z;
+            
+            // Bobbing animation & facing direction
+            bossGroup.position.y = 0.5 + Math.sin(walkTimer * 0.8) * 0.3;
+            bossGroup.lookAt(pacman.position.x, bossGroup.position.y, pacman.position.z);
+
+            // BOSS ABILITY TRIGGER TIMER
+            bossAbilityTimer++;
+            if(bossAbilityTimer > 280) {
+                bossAbilityTimer = 0;
+                triggerBossAbility();
+            }
+
+            // UPDATE HAZARDS & PROJECTILES
+            for(let i = bossProjectiles.length - 1; i >= 0; i--) {
+                const proj = bossProjectiles[i];
+                if(proj.type === 'fireball' || proj.type === 'meteor') {
+                    proj.mesh.position.add(proj.vel);
+                    if(proj.type === 'meteor' && proj.mesh.position.y <= 0.5) proj.mesh.position.y = 0.5;
+
+                    if(pacman.position.distanceTo(proj.mesh.position) < 1.4) {
+                        scene.remove(proj.mesh);
+                        bossProjectiles.splice(i, 1);
+                        if(!powerUp && !isJumping) {
+                            lives--;
+                            document.getElementById('lives').innerText = lives;
+                            playSfx(180, 0.4, 'sawtooth');
+                            if(lives <= 0) gameOver("HIT BY BOSS PROJECTILE!");
+                        }
+                    }
+                } 
+                else if(proj.type === 'shockwave' || proj.type === 'nova') {
+                    proj.radius += proj.expand;
+                    proj.mesh.scale.set(proj.radius, proj.radius, proj.radius);
+                    const dist = pacman.position.distanceTo(proj.mesh.position);
+                    if(Math.abs(dist - proj.radius) < 1.2 && pacman.position.y < 1.2) {
+                        if(!powerUp) {
+                            lives--;
+                            document.getElementById('lives').innerText = lives;
+                            playSfx(180, 0.4, 'sawtooth');
+                            if(lives <= 0) gameOver("HIT BY SHOCKWAVE!");
+                        }
+                    }
+                    if(proj.radius >= proj.maxScale) {
+                        scene.remove(proj.mesh);
+                        bossProjectiles.splice(i, 1);
+                    }
+                }
+                else if(proj.type === 'spike') {
+                    proj.duration--;
+                    if(pacman.position.distanceTo(proj.pos) < 1.5 && pacman.position.y < 1.2) {
+                        if(!powerUp) {
+                            lives--;
+                            document.getElementById('lives').innerText = lives;
+                            playSfx(180, 0.4, 'sawtooth');
+                            if(lives <= 0) gameOver("TRAPPED BY ICE SPIKE!");
+                        }
+                    }
+                    if(proj.duration <= 0) {
+                        scene.remove(proj.mesh);
+                        bossProjectiles.splice(i, 1);
+                    }
+                }
+            }
+
+            // SHADOW CLONES AI
+            shadowClones.forEach(c => {
+                c.lookAt(pacman.position);
+                const cDir = pacman.position.clone().sub(c.position).normalize().multiplyScalar(0.015);
+                c.position.add(cDir);
+                if(pacman.position.distanceTo(c.position) < 1.5 && !powerUp && !isJumping) {
+                    lives--;
+                    document.getElementById('lives').innerText = lives;
+                    playSfx(180, 0.4, 'sawtooth');
+                    if(lives <= 0) gameOver("DEFEATED BY SHADOW CLONE!");
+                }
+            });
+
+            // BOSS COLLISION DETECT
+            const distToBoss = pacman.position.distanceTo(bossGroup.position);
+            const hitThreshold = config.scale * 0.9;
+
+            if(distToBoss < hitThreshold) {
+                if(powerUp && !bossHitInvulnerable) {
+                    if(!isBossShielded) {
+                        // DAMAGE THE BOSS!
+                        bossHp--;
+                        score += 200;
+                        document.getElementById('score').innerText = score;
+                        updateBossHpUI();
+                        playSfx(600, 0.3, 'square');
+
+                        // Push boss back & set brief invulnerability flash
+                        bossHitInvulnerable = true;
+                        bossGroup.bodyMesh.material.color.set(0xffffff);
+                        const pushDir = bossGroup.position.clone().sub(pacman.position).normalize();
+                        bossGroup.position.add(pushDir.multiplyScalar(1));
+
+                        setTimeout(() => {
+                            bossHitInvulnerable = false;
+                            if(powerUp) bossGroup.bodyMesh.material.color.set(0x0000ff);
+                            else bossGroup.bodyMesh.material.color.set(bossGroup.baseColor);
+                        }, 400);
+
+                        // Check Boss Defeat
+                        if(bossHp <= 0) {
+                            startFinisherSequence();
+                        }
+                    } else {
+                        playSfx(150, 0.2, 'sawtooth'); // Blocked by shield
+                    }
+
+                } else if(!powerUp && !isJumping) {
+                    // PAC-MAN TAKES DAMAGE / LOSES A LIFE
+                    lives--; 
+                    document.getElementById('lives').innerText = lives;
+                    playSfx(180, 0.4, 'sawtooth');
+                    
+                    // Respawn positions
+                    pacman.position.set(0, 0.8, -12); 
+                    bossGroup.position.set(0, 0.5, 5);
+
+                    if(lives <= 0) {
+                        gameOver("OUT OF LIVES!");
+                    }
+                }
+            }
+
+            // POWER PELLET COLLECTION
+            for(let i = powerPellets.length - 1; i >= 0; i--) {
+                const p = powerPellets[i];
+                if(pacman.position.distanceTo(p.position) < 1.6) {
+                    scene.remove(p);
+                    powerPellets.splice(i, 1);
+
+                    score += 50;
+                    document.getElementById('score').innerText = score;
+                    playSfx(520, 0.12, 'sine');
+
+                    // Activate Power-Up
+                    powerUp = true;
+                    powerTimeLeft = 8000;
+                    document.getElementById('powerBarContainer').style.display = 'block';
+                    bossGroup.bodyMesh.material.color.set(0x0000ff);
+                }
+            }
+
+            // MINIMAP RENDER
+            miniCtx.fillStyle = '#000000'; 
+            miniCtx.fillRect(0,0,120,120);
+            const scale = 2.2, off = 60;
+
+            // Pac-Man indicator
+            miniCtx.fillStyle = '#ffd700'; 
+            miniCtx.fillRect(pacman.position.x*scale+off, pacman.position.z*scale+off, 6, 6);
+            
+            // Giant Boss indicator
+            miniCtx.fillStyle = powerUp ? '#0000ff' : '#ff0000'; 
+            miniCtx.fillRect(bossGroup.position.x*scale+off-3, bossGroup.position.z*scale+off-3, 10, 10);
+
+            // Power Pellets indicators
+            miniCtx.fillStyle = '#ffff00'; 
+            powerPellets.forEach(p => {
+                miniCtx.fillRect(p.position.x*scale+off, p.position.z*scale+off, 4, 4);
+            });
+
+            renderer.render(scene, camera);
+        }
+
+        // RESPONSIVE SCREEN RESIZE
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>
